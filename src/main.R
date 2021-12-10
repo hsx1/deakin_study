@@ -3,6 +3,7 @@
 library(ggplot2)
 library(lubridate)
 
+source("./src/utils.R")
 source("./src/load.R")
 source("./src/report.R")
 
@@ -17,9 +18,15 @@ pdata <- parse_epochs(f = file.path(data_dir, "single", "P1045_Acti1_Week_1_22_1
 cstats <- parse_statistics(f = file.path(data_dir, "single", "C1045_Acti_1_Week_1_22_11_2016_5_03_00_PM_New_Analysis[1][1].csv"))
 pstats <- parse_statistics(f = file.path(data_dir, "single", "P1045_Acti1_Week_1_22_11_2016_5_10_00_PM_New_Analysis[1][1].csv"))
 
+ctables <- list(data=cdata, istat=cstats)
+ptables <- list(data=cdata, istat=cstats)
+# for (tabl in c(ctables, ptables)){...}
+data <- tabl$data
+istat <- tabl$istat
 
-data <- cdata
-data <- pdata
+
+# Minor formatting --------------------------------------------------------
+
 # reformat date and time
 data <- data |>
   dplyr::mutate(
@@ -33,16 +40,33 @@ data <- data |>
 
 
 # Time series characteristics ---------------------------------------------
-# 2.	How long is the data set?
-nrow(data)
+
+# how many different periods?
+count_periods <- istat |>
+  dplyr::group_by(.data$interval_type) |>
+  dplyr::summarise(n = dplyr::n())
+cprint(
+  sprintf(
+    "Time series spans %.0f days, including %0.f ACTIVE periods, %0.f REST periods and %0.f SLEEP periods.",
+    count_periods$n[count_periods$interval_type == "DAILY"],
+    count_periods$n[count_periods$interval_type == "ACTIVE"],
+    count_periods$n[count_periods$interval_type == "REST"],
+    count_periods$n[count_periods$interval_type == "SLEEP"]),
+  col="y"
+  )
+
+# how long is the data?
+
 
 # Missing data ------------------------------------------------------------
-# 3.	Is there any missing data?
-data$na <- ifelse(complete.cases(data), TRUE, NA)
 
-extract_na_periods(data=data, target="na")
-extract_na_periods(data=data, target="sleep_wake")
-extract_na_periods(data=data, target="activity")
+data$invalid <- ifelse(complete.cases(data), FALSE, TRUE)
+# target, e.g. target = "invalid"
+periods_of_target(data, target = "invalid")
+
+
+#extract_na_periods(data=data, target="sleep_wake")
+#extract_na_periods(data=data, target="activity")
 
 # Mean light and activity -------------------------------------------------
 # 4.	What are the mean light and activity data in hour / 30-minute / 1-minute bins?

@@ -1,37 +1,39 @@
-# report
-
+# REPORT
 
 # Functions ---------------------------------------------------------------
 
-extract_na_periods <- function(data, target) {
-  # Extracts infos on start and stop time for periods with NA
-  #
-  # data: e.g. cdata or pdata, data frame
-  # target: str, column of interest
-  #
-  # return: data frame with infos of NA
+# Extracts periods of TRUE for boolean target variables similar to "Statistics" overview
+periods_of_target <- function(data, target){
+  # data: data frame
+  # target: bool, e.g. target = "invalid",
 
-  # extract valid date_times and diff to previous date time vector
-  valids <- data$date_time[!is.na(data[[target]])]
-  # where there is x = diff > 1, there are NAs in between x-1 and x
-  diff_to_prev <- c(0, difftime(valids[2:length(valids)], valids[1:length(valids) - 1]))
-  t_after_na <- valids[diff_to_prev > 1]
-  # jump_in_valid_t <- which(diff_to_prev > 1)
-
-  na_periods <- data.frame(matrix(ncol = 5, nrow = 0))
-  colnames(na_periods) <- c("first_na", "last_na", "first_idx", "last_idx", "duration")
-  for (t in t_after_na) {
-    first_na <- (valids[which(valids == t) - 1] + minutes(1))
-    last_na <- (valids[which(valids == t) - minutes(1)])
-    # cat(paste0("Unavailable measurements for ", target, " at t = [", first_na, "; ", last_na, "]\n"))
-    first_idx <- which(data$date_time == first_na)
-    last_idx <- which(data$date_time == last_na)
-    dur <- (last_na + minutes(1)) - first_na
-    na_periods <- rbind(na_periods, data.frame(first_na = first_na, last_na = last_na, first_idx = first_idx, last_idx = last_idx, duration = dur))
-    # check
-    # before_start_idx <- start_idx - 1
-    # after_stop_idx <- ifelse((stop_idx+1) > nrow(data), nrow(data), (stop_idx+1))
-    # print(c(!is.na(data[[target]][before_start_idx]), !is.na(data[[target]][after_stop_idx])))
+  # always include the first row (preliminary)
+  data$previous_different <- TRUE
+  for (i in 2:nrow(data)){
+    # next value i + 1 same as value before i
+    data$previous_different[i] = (data[i, target] != data[i-1, target])
   }
-  return(na_periods)
+
+  # extract blocks starting with first block (whether TRUE or FALSE doesn't matter, because first row is always true)
+  transitions <- data[data$previous_different, c("date_time", target)]
+  # drop first block, if is doesn't start with target
+  if (transitions[1, target] == FALSE) {
+    transitions <- transitions[-1,]
+  }
+
+  # first transition always "to TRUE", e.g. NA
+  transitions_start <- transitions[seq(from=1, to=nrow(transitions), by=2), "date_time"]
+  transitions_end <- transitions[seq(from=2, to=nrow(transitions), by=2), "date_time"]
+  # for cases without second transition "to FALSE", e.g. ending with NA, add last minute+1
+  if (length(transitions_start) != length(transitions_end)) {
+    transitions_end <- c(transitions_end, data$date_time[nrow(data)]+lubridate::minutes(1))
+  }
+
+  overview <- data.frame(
+    target = target,
+    start_time = transitions_start,
+    end_time = transitions_end,
+    duration = transitions_end - transitions_start
+  )
+  return(overview)
 }

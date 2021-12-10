@@ -9,20 +9,6 @@ re <- c("(C\\d{4})", "(P\\d{4})")
 
 # functions ---------------------------------------------------------------
 
-# uses fun() to create object and caches the result as an rds object
-rds_cached <- function(filename, fun, ...) {
-  if (file.exists(filename)) {
-    re <- readRDS(filename)
-  } else {
-    re <- fun(...)
-    dir.create(dirname(filename), recursive = TRUE, showWarnings = FALSE)
-    if (!(all(is.null(re)) | all(is.na(re)))){
-      saveRDS(re, file = filename)
-    }
-  }
-  return(re)
-}
-
 # loads paths of all files in folders structured as original
 load_paths <- function(data_dir = "./data/raw", groups = c("CLIENT", "PARTNER"), re = c("(C\\d{4})", "(P\\d{4})"), complete=FALSE) {
   # data_dir: directory with raw data
@@ -83,8 +69,6 @@ parse_statistics <- function(f) {
       dplyr::mutate_at(dplyr::vars(4, 6), ~ format(strptime(., "%I:%M:%S %p"), "%H:%M:%S")) |>
       dplyr::mutate_at(dplyr::vars(7:length(stats_vars)),
                        ~ as.numeric(.))
-
-    #summarystats <- statistics |> dplyr::group_by(stringr::str_detect(statistics$interval_type, "Summary"))
     return(statistics)
   }
 }
