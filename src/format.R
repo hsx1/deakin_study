@@ -1,12 +1,36 @@
 # FORMAT
 
 # Bin time series RELATIVE to anker
-bin_series_at_anker <- function(anker, bin_size = 30){
+bin_series_at_anker <- function(data, target_cols, rel_col, bin_size = 30){
   # computes average for target variables and bin interval (in steps of anker unit)
   #
-  # anker: numeric, with 0 where individuals time series needs is centered
+  # rel_col: numeric, relative column, with 0 where individuals time series needs is centered; recommended that intervals code for minutes
   # bin_size: numeric, e.g. is minutes if anker is oriented at time
+  data$bin <- data[[rel_col]] %/% bin_size #floor(data[[rel_col]] / 2)
 
+  # drop invalid bins, e.g. at edges
+  invalid <- data |>
+    dplyr::count(bin = .data$bin) |>
+    dplyr::filter(.data$n < bin_size)
+  #print(invalid)
+  invalid_bins <- intersect(data$bin, invalid$bin)
+
+  # add average bin time
+  offset <- (bin_size - 1)/2
+  data$bin <- data$bin + offset
+
+  # filter bins that are too small
+  if(length(invalid_bins) > 0){
+    tmp <- data[!(data$bin %in% invalid_bins),]
+  }else{
+    tmp <- data
+  }
+
+  # summarize bins with mean values
+  binned_data <- tmp |>
+    dplyr::group_by(.data$bin) |>
+    dplyr::summarize_at(dplyr::all_of(c(rel_col, target_cols)), mean, na.rm=F)
+  return(binned_data)
 }
 
 # Bin time series ABSOLUTE with date_time column

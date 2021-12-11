@@ -68,4 +68,27 @@ test_bin_series_at_datetime <- function(){
   testthat::expect_equal(ncol(new_data), 3)
 }
 
+
+# bin_series_at_anker()
+test_bin_series_at_anker <- function(){
+  start_time <- as.POSIXct("2013-06-17 14:20:00 UTC")
+  steps <- 12
+  end_time <- start_time + as.difftime(steps-1, units = "mins")
+  filter_out <- 3
+  data <- data.frame(
+    line = 1:steps,
+    small_value = rnorm(steps),
+    value = round(rnorm(steps)*10),
+    date_time = seq(start_time, end_time, by = "mins")
+    ) #|>
+    #dplyr::filter(!(.data$line %in% filter_out))
+
+  anker_time <- data$date_time[steps/2]
+  # numeric relative datetime in minutes
+  data$nrel_tmin <- as.numeric(data$date_time - anker_time) / 60
+  new_data <- bin_series_at_anker(data, target_cols = "value", rel_col = "nrel_tmin", bin_size = steps/4)
+  testthat::expect_equal(new_data$bin[2], 0)
+}
+
+
 cprint("All tests passed.", col = "g")
