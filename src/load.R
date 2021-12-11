@@ -63,7 +63,7 @@ parse_statistics <- function(f) {
   }else{
 
     statistics <- statistics |>
-      dplyr::select(stats_vars) |>
+      dplyr::select(all_of(stats_vars)) |>
       dplyr::mutate("interval_type" = as.character(.data$interval_type)) |>
       dplyr::mutate_at(dplyr::vars(3, 5), ~ as.Date(., "%d/%m/%Y")) |>
       dplyr::mutate_at(dplyr::vars(4, 6), ~ format(strptime(., "%I:%M:%S %p"), "%H:%M:%S")) |>

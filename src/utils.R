@@ -5,6 +5,7 @@
 
 source("./src/load.R")
 source("./src/report.R")
+source("./src/format.R")
 
 # save --------------------------------------------------------------------
 
@@ -49,4 +50,18 @@ cprint <- function(txt, colour) {
   }else{
     cat(paste0("\033[0;", colcode, "m", txt, "\033[0m", "\n"))
   }
+}
+
+
+# formatting --------------------------------------------------------------
+
+# adds empty variable with chose name (for functions only)
+add_newvar <- function(data, new_name){
+  if (new_name %in% colnames(data)){
+    warning(sprintf("%s already exists.", new_name))
+    return(data)
+  }
+  data$new_var <- NA
+  colnames(data)[colnames(data) == "new_var"] <- new_name
+  return(data)
 }

@@ -1,22 +1,41 @@
 # Main analysis script
 
-library(ggplot2)
+# packages
+# TODO install if not available
 library(lubridate)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
 
 source("./src/utils.R")
-source("./src/load.R")
-source("./src/report.R")
 
-
+#main <- function(){
 
 # Load data ---------------------------------------------------------------
 # 1.	What is the data format?
 
+
 # parse files
-cdata <- parse_epochs(f = file.path(data_dir, "single", "C1045_Acti_1_Week_1_22_11_2016_5_03_00_PM_New_Analysis[1][1].csv"))
-pdata <- parse_epochs(f = file.path(data_dir, "single", "P1045_Acti1_Week_1_22_11_2016_5_10_00_PM_New_Analysis[1][1].csv"))
-cstats <- parse_statistics(f = file.path(data_dir, "single", "C1045_Acti_1_Week_1_22_11_2016_5_03_00_PM_New_Analysis[1][1].csv"))
-pstats <- parse_statistics(f = file.path(data_dir, "single", "P1045_Acti1_Week_1_22_11_2016_5_10_00_PM_New_Analysis[1][1].csv"))
+cdata <- parse_epochs(
+  f = file.path(
+    data_dir, "single",
+    "C1045_Acti_1_Week_1_22_11_2016_5_03_00_PM_New_Analysis[1][1].csv")
+)
+pdata <- parse_epochs(
+  f = file.path(
+    data_dir, "single",
+    "P1045_Acti1_Week_1_22_11_2016_5_10_00_PM_New_Analysis[1][1].csv")
+)
+cstats <- parse_statistics(
+  f = file.path(
+    data_dir, "single",
+    "C1045_Acti_1_Week_1_22_11_2016_5_03_00_PM_New_Analysis[1][1].csv")
+)
+pstats <- parse_statistics(
+  f = file.path(
+    data_dir, "single",
+    "P1045_Acti1_Week_1_22_11_2016_5_10_00_PM_New_Analysis[1][1].csv")
+)
 
 ctables <- list(data=cdata, istat=cstats)
 ptables <- list(data=cdata, istat=cstats)
@@ -35,9 +54,6 @@ data <- data |>
     date = lubridate::ymd(date)
     )
 
-# group by day
-# data <- data |> dplyr::group_by(.data$date)
-
 
 # Time series characteristics ---------------------------------------------
 
@@ -52,37 +68,76 @@ cprint(
     count_periods$n[count_periods$interval_type == "ACTIVE"],
     count_periods$n[count_periods$interval_type == "REST"],
     count_periods$n[count_periods$interval_type == "SLEEP"]),
-  col="y"
+  colour="y"
   )
 
 # how long is the data?
+cprint(
+  sprintf(
+    "Dataset properties: %.0f observations, %.0f complete cases with %s in time (%.2f%%).",
+    nrow(data), sum(complete.cases(data)),
+    hms::as_hms(sum(!complete.cases(data))*60),
+    sum(!complete.cases(data))/nrow(data) * 100),
+  col = "y"
+)
+
+# regularity of time steps
+time_steps_1min <- (difftime(data[2:nrow(data), "date_time"], data[1:(nrow(data)-1), "date_time"]) == 1)
+if(all(time_steps_1min)){
+  cprint("Data is sampled with 1 Hz.", colour = "g")
+}else{
+  cprint("Irregular time bins. Data needs to be sampled with 1 Hz. Further operations for binning wil fail.\n", colour = "r")
+}
 
 
-# Missing data ------------------------------------------------------------
 
+# missing data
 data$invalid <- ifelse(complete.cases(data), FALSE, TRUE)
-# target, e.g. target = "invalid"
 periods_of_target(data, target = "invalid")
 
 
-#extract_na_periods(data=data, target="sleep_wake")
-#extract_na_periods(data=data, target="activity")
-
 # Mean light and activity -------------------------------------------------
-# 4.	What are the mean light and activity data in hour / 30-minute / 1-minute bins?
 
-#
+# in 1-minute bins, in 30-minute bins, in 60 minute bins
+targets <- c("activity", "white_light", "red_light", "blue_light", "green_light")
+orig_data <- data
+data <- data |>
+  bin_series_at_datetime(target_cols = targets, minute_interval = 5) |>
+  bin_series_at_datetime(target_cols = targets, minute_interval = 30) |>
+  bin_series_at_datetime(target_cols = targets, minute_interval = 60)
+# in 1-minute bins
+
+moving_time_average(data, target, min_interval = 30){
+
+  size = min_interval
+  data$new_var <- stats::filter(data[[target]], filter = rep(1 / size, size), sides = 2)
+  colnames(data[,"new_var"]) <- paste0(target, "_mov")
+}
+
+
+
+# get sorting
+# sort by time
+# create vector bin_period for binning
+# summarize by bin_groups
+
+
 
 
 # Regularity --------------------------------------------------------------
 # 5.	How regular is the activity and light exposure?
 
 # visual inspection
+plot_colorlight(data)
+plot_whitelight(data)
+plot_activity(data)
 # autocorrelation with 24-hour lag (or various lags)
 
 
 # Correlation -------------------------------------------------------------
 # 6.	Are light and activity correlated?
+
+# GLM? Smoothing?
 
 
 # Unit tests --------------------------------------------------------------
