@@ -26,7 +26,7 @@ periods_of_target <- function(data, target){
   transitions_end <- transitions[seq(from=2, to=nrow(transitions), by=2), "date_time"]
   # for cases without second transition "to FALSE", e.g. ending with NA, add last minute+1
   if (length(transitions_start) != length(transitions_end)) {
-    transitions_end <- c(transitions_end, data$date_time[nrow(data)]+lubridate::minutes(1))
+    transitions_end <- c(transitions_end, data$date_time[nrow(data)] + lubridate::minutes(1))
   }
 
   overview <- data.frame(

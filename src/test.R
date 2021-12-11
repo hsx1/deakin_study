@@ -46,24 +46,25 @@ test_periods_of_target <- function(){
   testthat::expect_equal(count_na_blocks, 3)
 }
 
-# bin_time_series()
-test_bin_time_series <- function(){
+# bin_series_at_datetime()
+test_bin_series_at_datetime <- function(){
   # data must be sampled in 1 Hz
   start_time <- as.POSIXct("2013-06-17 14:20:00 UTC")
   steps <- 10
   end_time <- start_time + as.difftime(steps-1, units = "mins")
+  filter_out <- 3
   data <- data.frame(
     line = 1:steps,
     small_value = rnorm(steps),
     value = round(rnorm(steps)*10),
     date_time = seq(start_time, end_time, by = "mins")
-  )
-  data <- data[!(data$line %in% c(4)),]
+    ) |>
+    dplyr::filter(!(.data$line %in% filter_out))
 
-  new_data <- bin_time_series(data, target_cols = "value", min_interval = 3)
-  testthat::expect_equal(length(unique(!is.na(new_data$bin3))), 2)
+  new_data <- bin_series_at_datetime(data, target_cols = "value", minute_interval = 3)
+  testthat::expect_equal(nrow(new_data), 2)
 
-  new_data <- bin_time_series(new_data, target_cols = c("small_value", "value"), min_interval = 3)
+  new_data <- bin_series_at_datetime(data, target_cols = c("small_value", "value"), minute_interval = 3)
   testthat::expect_equal(ncol(new_data), 3)
 }
 
