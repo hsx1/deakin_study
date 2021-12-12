@@ -1,5 +1,8 @@
 # ANALYSIS
 
+# temporary until called by main
+source("./src/utils.R")
+
 # analysis <- function() {
 
 # Time series characteristics ---------------------------------------------
