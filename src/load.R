@@ -108,6 +108,12 @@ parse_epochs <- function(f) {
         dplyr::vars(4:11),
         ~ as.numeric(.)
       )
+    epochs <- epochs |>
+      dplyr::mutate(
+        date_time = lubridate::ymd_hms(paste(.data$date, .data$time), tz = "UTC"),
+        time = as.numeric(lubridate::hms(.data$time)),
+        date = lubridate::ymd(.data$date)
+      )
   }
   return(epochs)
 }

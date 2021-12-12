@@ -1,19 +1,20 @@
 # FORMAT
 
 # Bin time series RELATIVE to anker
-bin_series_at_anker <- function(data, target_cols, rel_col, bin_size = 30){
-  # computes average for target variables and bin interval (in steps of anker unit)
+bin_series_at_anker <- function(data, target_cols, rel_col, bin_size){
+  # Computes average for target variables and bin interval (in steps of anker unit)
   #
+  # target_cols: vector, columns to summarize for bins
   # rel_col: numeric, relative column, with 0 where individuals time series needs is centered; recommended that intervals code for minutes
   # bin_size: numeric, e.g. is minutes if anker is oriented at time
+
   data$bin <- data[[rel_col]] %/% bin_size #floor(data[[rel_col]] / 2)
 
   # drop invalid bins, e.g. at edges
   invalid <- data |>
     dplyr::count(bin = .data$bin) |>
     dplyr::filter(.data$n < bin_size)
-  #print(invalid)
-  invalid_bins <- intersect(data$bin, invalid$bin)
+  invalid_bins <- intersect(data$bin, invalid$bin) # maximum 2 if not aligned
 
   # add average bin time
   offset <- (bin_size - 1)/2
@@ -26,7 +27,7 @@ bin_series_at_anker <- function(data, target_cols, rel_col, bin_size = 30){
     tmp <- data
   }
 
-  # summarize bins with mean values
+  # summarize bins -> mean relative time, and mean values
   binned_data <- tmp |>
     dplyr::group_by(.data$bin) |>
     dplyr::summarize_at(dplyr::all_of(c(rel_col, target_cols)), mean, na.rm=F)
@@ -35,7 +36,7 @@ bin_series_at_anker <- function(data, target_cols, rel_col, bin_size = 30){
 
 # Bin time series ABSOLUTE with date_time column
 bin_series_at_datetime <- function(data, target_cols, minute_interval = 30){
-  # computed average for target variables and bin interval [in minutes]
+  # Computed average for target variables and bin interval [in minutes]
   #
   # data: dataset
   # minute_interval: interval size in minutes, e.g. 5, 30 or 60
@@ -53,7 +54,7 @@ bin_series_at_datetime <- function(data, target_cols, minute_interval = 30){
   invalid_bins <- intersect(data$bin, invalid$bin)
 
   # add average bin time
-  offset <- minutes((minute_interval - 1)/2)
+  offset <- hms::as_hms(((minute_interval - 1)/2)*60)
   data$mean_bin_time <- data$bin + offset
 
   if(length(invalid_bins) > 0){

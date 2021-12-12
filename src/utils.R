@@ -1,6 +1,15 @@
 # UTILS
 
 
+# packages ----------------------------------------------------------------
+
+# TODO install if not available
+library("lubridate")
+library("ggplot2")
+library("dplyr")
+library("tidyr")
+
+
 # source everything -------------------------------------------------------
 
 source("./src/load.R")
