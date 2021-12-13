@@ -76,3 +76,74 @@ bin_series_at_datetime <- function(data, target_cols, minute_interval = 30){
 
   return(binned_data)
 }
+
+# Construct moving average at bin size [UNIFINISHED]
+moving_time_average <- function(data, target, min_interval = 30){
+  size = min_interval
+  data$new_var <- stats::filter(data[[target]], filter = rep(1 / size, size), sides = 2)
+  colnames(data[,"new_var"]) <- paste0(target, "_mov")
+}
+
+
+# Get autocorrelations of light and activity
+get_autocor <- function(data, max_lag = Inf){
+  # data: dataset
+  # max_lag: maximum lag in correlation
+  # bin_size = (data$date_time[2] - data$date_time[1]); day_span = 2
+  # maximum_lag = (60/bin_size) * 24 * day_span
+
+  # resource (https://rh8liuqy.github.io/ACF_PACF_by_ggplot2.html#correlogram-by-ggplot2)
+  ac <- list()
+  maximum_lag <- max_lag
+  for (light in c("activity", light_cols)) {
+    ac[[light]] <- stats::acf(
+      plot = FALSE,
+      x = data[[light]],
+      type = "correlation",
+      na.action = na.pass,
+      lag.max = maximum_lag
+    )
+    ac[[paste0(light, "pac")]] <- stats::acf(
+      plot = FALSE,
+      x = data[[light]],
+      type = "partial",
+      na.action = na.pass,
+      lag.max = maximum_lag
+    )
+    # collect
+    ac[[light]] <- data.frame(
+      lag = ac[[light]]$lag,
+      acf = ac[[light]]$acf,
+      pacf = c(NA, ac[[paste0(light, "pac")]]$acf)
+    )
+    ac[[light]]$acf  <- ifelse(is.na(ac[[light]]$acf), 0, ac[[light]]$acf)
+    ac[[light]]$pacf <- ifelse(is.na(ac[[light]]$pacf), 0, ac[[light]]$pacf)
+  }
+  return(ac)
+}
+
+# Get cross correlation of activity with light
+get_crosscor <- function(data30, max_lag = Inf){
+  # data: dataset
+  # max_lag: maximum lag in correlation
+  #   bin_size = (data$date_time[2] - data$date_time[1]); day_span = 2
+  #   maximum_lag = (60/bin_size) * 24 * day_span
+
+  cc <- list()
+  maximum_lag <- Inf
+  for (light in light_cols) {
+    cc[[light]] <- stats::ccf(
+      plot = FALSE,
+      data$activity,
+      data[[light]],
+      type = "correlation",
+      na.action = na.pass,
+      lag.max = maximum_lag
+    )
+    cc[[light]] <- data.frame(
+      lag = cc[[light]]$lag,
+      ccf = cc[[light]]$acf
+    )
+  }
+  return(cc)
+}

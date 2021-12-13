@@ -197,9 +197,3 @@ load_epochs <- function(data_dir) {
 #load_epochs(data_dir)
 #load_statistics(data_dir)
 
-# Tests -------------------------------------------------------------------
-
-# TODO maybe dynamic?
-test_cols_exist <- function() {
-  TRUE
-}

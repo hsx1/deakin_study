@@ -41,3 +41,13 @@ extract_na_periods <- function(data, target) {
   }
   return(na_periods)
 }
+
+
+# misc --------------------------------------------------------------------
+x <- 1479974700
+x1 <- as_datetime(as.numeric(x))
+x2 <- as_datetime("2016-11-24 08:05:00 UTC")
+cdata$time <- lubridate::hms(cdata$time)
+cdata$time <- lubridate::date(cdata$date)
+lubridate::parse_time(cdata$time)
+

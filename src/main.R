@@ -7,7 +7,6 @@ source("./src/utils.R")
 # Load data ---------------------------------------------------------------
 # 1.	What is the data format?
 
-
 # parse files
 cdata <- parse_epochs(
   f = file.path(
