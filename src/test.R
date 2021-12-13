@@ -7,6 +7,64 @@ source("./src/utils.R")
 
 # TODO test loader and parser
 
+# test single file equals downloaded file
+compare_files_email_vs_download <- function(){
+
+  # client files
+  f_cepochs_email = parse_epochs(
+    f = file.path(
+      raw_dir, "single",
+      "C1045_Acti_1_Week_1_22_11_2016_5_03_00_PM_New_Analysis[1][1].csv")
+  )
+  f_cepochs_download = parse_epochs(
+    f = file.path(
+    raw_dir, "CLIENT",
+    "C1045_Acti_1_Week_1_22_11_2016_5_03_00_PM_New_Analysis.csv")
+  )
+
+  testthat::expect_true(all(f_cepochs_email$white_light == f_cepochs_download$white_light, na.rm = T))
+
+  # partner files
+  f_pepochs_email <- parse_epochs(
+    f = file.path(
+      raw_dir, "single",
+      "P1045_Acti1_Week_1_22_11_2016_5_10_00_PM_New_Analysis[1][1].csv")
+  )
+  f_pepochs_download <- parse_epochs(
+    f = file.path(
+      raw_dir, "PARTNER",
+      "P1045_Acti1_Week_1_22_11_2016_5_10_00_PM_New_Analysis.csv")
+  )
+  testthat::expect_true(all(f_cepochs_email$white_light == f_cepochs_download$white_light, na.rm = T))
+
+  # client stats
+  f_cstats_email <- parse_statistics(
+    f = file.path(
+      raw_dir, "single",
+      "C1045_Acti_1_Week_1_22_11_2016_5_03_00_PM_New_Analysis[1][1].csv")
+  )
+  f_cstats_download = parse_statistics(
+    f = file.path(
+      raw_dir, "CLIENT",
+      "C1045_Acti_1_Week_1_22_11_2016_5_03_00_PM_New_Analysis.csv")
+  )
+  testthat::expect_true(all(f_cstats_email$start_time == f_cstats_download$start_time, na.rm = T))
+
+  # partner stats
+  f_pstats_email <- parse_statistics(
+    f = file.path(
+      raw_dir, "single",
+      "P1045_Acti1_Week_1_22_11_2016_5_10_00_PM_New_Analysis[1][1].csv")
+  )
+  f_pstats_download <- parse_statistics(
+    f = file.path(
+      raw_dir, "PARTNER",
+      "P1045_Acti1_Week_1_22_11_2016_5_10_00_PM_New_Analysis.csv")
+  )
+  testthat::expect_true(all(f_pstats_email$start_time == f_pstats_download$start_time, na.rm = T))
+
+}
+
 # periods_of_target()
 test_periods_of_target <- function(){
   start_time <- as.POSIXct("2013-06-17 14:20:00 UTC")

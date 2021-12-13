@@ -2,37 +2,31 @@
 
 source("./src/utils.R")
 
-#main <- function(){
+main <- function(select_id = 1045){
+  # select_id: can be FALSE or numeric ID (without group prefix, e.g. 1045)
 
-# Load data ---------------------------------------------------------------
-# 1.	What is the data format?
+  # Load data ---------------------------------------------------------------
 
-# parse files
-cdata <- parse_epochs(
-  f = file.path(
-    data_dir, "single",
-    "C1045_Acti_1_Week_1_22_11_2016_5_03_00_PM_New_Analysis[1][1].csv")
-)
-pdata <- parse_epochs(
-  f = file.path(
-    data_dir, "single",
-    "P1045_Acti1_Week_1_22_11_2016_5_10_00_PM_New_Analysis[1][1].csv")
-)
-cstats <- parse_statistics(
-  f = file.path(
-    data_dir, "single",
-    "C1045_Acti_1_Week_1_22_11_2016_5_03_00_PM_New_Analysis[1][1].csv")
-)
-pstats <- parse_statistics(
-  f = file.path(
-    data_dir, "single",
-    "P1045_Acti1_Week_1_22_11_2016_5_10_00_PM_New_Analysis[1][1].csv")
-)
+  process_epochs(raw_dir, return_object = FALSE)
+  process_stats(raw_dir, return_object = FALSE)
+  epochsinfo <- load_paths(in_dir = file.path(data_dir, "transforms"))
+  statsinfo <- load_paths(in_dir = file.path(data_dir, "statistics"))
 
-ctables <- list(data=cdata, istat=cstats)
-ptables <- list(data=cdata, istat=cstats)
-# for (tabl in c(ctables, ptables)){...}
-data <- tabl$data
-istat <- tabl$istat
+  # merge
+  infofiles <- full_join(epochsinfo, statsinfo, by = "id")
+  colnames(infofiles) <- c("id", "cepoch", "pepoch", "cstats", "pstats")
 
-# analysis(data, istat)
+  if (select_id) {
+    infofiles <- infofiles[infofiles$id == select_id, ]
+  }
+
+  for (dyad in seq_len(nrow(infofiles))) {
+    cdata <- readRDS(infofiles$cepoch)
+    pdata <- readRDS(infofiles$pepoch)
+    cstats <- readRDS(infofiles$cstats)
+    pstats <- readRDS(infofiles$pstats)
+
+    # analysis(data, st)
+  }
+
+}

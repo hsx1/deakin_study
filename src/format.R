@@ -30,7 +30,7 @@ bin_series_at_anker <- function(data, target_cols, rel_col, bin_size){
   # summarize bins -> mean relative time, and mean values
   binned_data <- tmp |>
     dplyr::group_by(.data$bin) |>
-    dplyr::summarize_at(dplyr::all_of(c(rel_col, target_cols)), mean, na.rm=F)
+    dplyr::summarize_at(dplyr::all_of(c(rel_col, target_cols)), mean, na.rm=T)
   return(binned_data)
 }
 
@@ -67,7 +67,7 @@ bin_series_at_datetime <- function(data, target_cols, minute_interval = 30){
 
   binned_data <- tmp |>
     dplyr::group_by(.data$date_time) |>
-    dplyr::summarize_at(dplyr::all_of(c(target_cols)), mean, na.rm=F)
+    dplyr::summarize_at(dplyr::all_of(c(target_cols)), mean, na.rm=T)
 
   # number of valid values per bin
   # tmp |>
@@ -96,26 +96,29 @@ get_autocor <- function(data, max_lag = Inf){
   ac <- list()
   maximum_lag <- max_lag
   for (light in c("activity", light_cols)) {
-    ac[[light]] <- stats::acf(
+    light_acf <- stats::acf(
       plot = FALSE,
       x = data[[light]],
       type = "correlation",
       na.action = na.pass,
       lag.max = maximum_lag
     )
-    ac[[paste0(light, "pac")]] <- stats::acf(
+    light_pacf <- stats::acf(
       plot = FALSE,
       x = data[[light]],
       type = "partial",
       na.action = na.pass,
       lag.max = maximum_lag
     )
-    # collect
+
+    # collect (note, first element of pacf not existent, thus NA)
     ac[[light]] <- data.frame(
-      lag = ac[[light]]$lag,
-      acf = ac[[light]]$acf,
-      pacf = c(NA, ac[[paste0(light, "pac")]]$acf)
+      lag = light_acf$lag,
+      acf = light_acf$acf,
+      pacf = c(NA, light_pacf$acf)
     )
+
+    # set NA correlations to 0
     ac[[light]]$acf  <- ifelse(is.na(ac[[light]]$acf), 0, ac[[light]]$acf)
     ac[[light]]$pacf <- ifelse(is.na(ac[[light]]$pacf), 0, ac[[light]]$pacf)
   }
@@ -123,7 +126,7 @@ get_autocor <- function(data, max_lag = Inf){
 }
 
 # Get cross correlation of activity with light
-get_crosscor <- function(data30, max_lag = Inf){
+get_crosscor <- function(data, max_lag = Inf){
   # data: dataset
   # max_lag: maximum lag in correlation
   #   bin_size = (data$date_time[2] - data$date_time[1]); day_span = 2

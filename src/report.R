@@ -3,11 +3,10 @@
 
 # Tables ------------------------------------------------------------------
 
-
 # Extracts periods of TRUE for boolean target variables similar to "Statistics" overview
 periods_of_target <- function(data, target) {
   # data: data frame
-  # target: bool, e.g. target = "invalid",
+  # target: bool, e.g. target = "invalid"
 
   # always include the first row (preliminary)
   data$previous_different <- TRUE
@@ -41,42 +40,50 @@ periods_of_target <- function(data, target) {
 }
 
 
-# Plots -------------------------------------------------------------------
 
-plot_correlogram <- function(cordata, x = "lag", kind = "auto") {
-  # kind: can be "auto" or "cross"
+# Correlograms ------------------------------------------------------------
+
+plot_correlogram <- function(cordata, kind = "auto", ylim, title = "Correlogram", breaks) {
+  # kind: can be "auto" for autocorrelation, "p-auto" for partial autocorrelation or "cross" for cross-correlation
+
+  x = "lag"
+  ylim = ifelse(missing(ylim), c(min(cordata$acf, cordata$pacf, na.rm = T), 1), ylim)
   if (kind == "auto") {
+    title <- ifelse(missing(title), "Autocorrelation", title)
     plot_ac <- ggplot(
       cordata,
       aes(x = .data[[x]], y = .data[["acf"]])
-      ) +
+    ) +
       geom_col(fill = "#4373B6", width = 0.7) +
       scale_y_continuous(
-        name = element_blank(),
         limits = c(min(cordata$acf, cordata$pacf, na.rm = T), 1)
-        ) +
+      ) +
+      #scale_x_continuous(breaks = seq(0, 400, 50)) +
       xlab("Lag") +
       ylab("Effect size") +
-      ggtitle("ACF") +
+      ggtitle(title) +
       theme_bw()
 
+    return(plot_ac)
+  }else if(kind == "p-auto"){
+    title <- ifelse(missing(title), "Partial Autocorrelation", title)
     plot_pac <- ggplot(
       cordata,
       aes(x = .data[[x]], y = .data[["pacf"]])
-      ) +
+    ) +
       geom_col(fill = "#4373B6", width = 0.7) +
       scale_y_continuous(
-        name = element_blank(),
         limits = c(min(cordata$acf, cordata$pacf, na.rm = T), 1)
       ) +
       xlab("Lag") +
       ylab("Effect size") +
-      ggtitle("PACF") +
+      ggtitle(title) +
       theme_bw()
 
-    p <- list(plot_ac, plot_pac)
-    #p <- cowplot::plot_grid(plot_ac, plot_pac, nrow = 1)
+    return(plot_pac)
+    # p <- cowplot::plot_grid(plot_ac, plot_pac, nrow = 1)
   } else if (kind == "cross") {
+    title <- ifelse(missing(title), "Cross Correlation", title)
     plot_cc <- ggplot(
       cordata,
       aes(x = .data[[x]], y = .data[["ccf"]])
@@ -84,82 +91,102 @@ plot_correlogram <- function(cordata, x = "lag", kind = "auto") {
       geom_col(fill = "#4373B6", width = 0.7) +
       xlab("Lag") +
       ylab("Effect size") +
-      ggtitle("CCF") +
+      ggtitle(title) +
       theme_bw()
-    p <- plot_cc
+    return(plot_cc)
   } else {
     warning("No valid specification.")
     return("")
   }
-
-
-  return(p)
 }
 
-# TODO adapt for binned time series
 
-# light by time separate per day
+# Descriptive activity/exposure plots -------------------------------------
 
-# colored light
-plot_colorlight <- function(data) {
+# Plot of colored light exposure
+plot_colorlight <- function(data, title = "Colored light exposure by day", log = FALSE) {
+
+  # structural part
   longdata <- data |> tidyr::pivot_longer(cols = c("red_light", "green_light", "blue_light"))
-  ggplot(data = longdata, aes(x = .data$date_time, color = name)) +
-    geom_line(aes(y = (.data$value))) + # maybe rather log?
-    facet_grid(facets = .data$date ~ .) +
+  if (log) {
+    raw_p <- ggplot(data = longdata, aes(x = .data$time, color = .data$name)) +
+      geom_line(aes(y = log(.data$value))) +
+      facet_grid(facets = .data$date ~ .)
+  } else {
+    raw_p <- ggplot(data = longdata, aes(x = .data$time, color = .data$name)) +
+      geom_line(aes(y = .data$value)) +
+      facet_grid(facets = .data$date ~ .)
+  }
+
+  # design part
+  design_p <- raw_p +
     scale_x_time(
-      breaks = (0:23) * 60 * 60,
-      minor_breaks = (0:23) * 60 * 60,
+      breaks = seq(0, 24, 2) * 60 * 60,
+      minor_breaks = (0:24) * 60 * 60,
       limits = c(0, 60 * 60 * 24)
     ) +
-    xlab("Time [sec]") +
+    scale_color_manual(
+      limits = c("red_light", "green_light", "blue_light"),
+      values = c("#CC0000", "#009900", "#0066CC"),
+      labels = c("red", "green", "blue")
+    ) +
+    labs("Light color") +
+    xlab("Time [h:m:s]") +
     ylab("Light [\u00B5W / m\u00B2]") +
+    ggtitle(title) +
     theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-
-  longdata <- data5 |> tidyr::pivot_longer(cols = c("red_light", "green_light", "blue_light"))
-  ggplot(data = longdata, aes(x = .data$nrel_date_time, color = name)) +
-    geom_line(aes(y = (.data$value))) + # maybe rather log?
-    # facet_grid(facets = .data$date ~ .) +
-    scale_x_continuous(name = "Time [sec]", breaks = ) +
-    xlab("Time [sec]") +
-    ylab("Light [\u00B5W / m\u00B2]") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+    theme(
+      legend.title = element_blank(),
+      legend.position = "top",
+      axis.text.x = element_text(angle = 20, vjust = 0.5, hjust = 1)
+    )
+  return(design_p)
 }
 
 
-# white light [lux]
-plot_whitelight <- function(data) {
-  ggplot(data = data, aes(x = .data$time)) +
+# Plot of white light [lux] exposure
+plot_whitelight <- function(data, title = "While light exposure by day") {
+
+  # plot
+  p <- ggplot(data = data, aes(x = .data$time)) +
     geom_line(aes(y = .data$white_light)) +
     facet_grid(facets = .data$date ~ .) +
     scale_x_time(
-      breaks = (0:23) * 60 * 60,
-      minor_breaks = (0:23) * 60 * 60,
+      breaks = seq(0, 24, 2) * 60 * 60,
+      minor_breaks = (0:24) * 60 * 60,
       limits = c(0, 60 * 60 * 24)
     ) +
     xlab("Time [sec]") +
     ylab("White Light [lux]") +
+    ggtitle(title) +
     theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+    theme(
+      axis.text.x = element_text(angle = 20, vjust = 0.5, hjust = 1)
+    )
+  return(p)
 }
 
-# light by time - filtered by sleep - per day
-
-# light by date_time separate per group
-
-# activity by time
-plot_activity <- function(data) {
-  ggplot(data = data, aes(x = .data$time)) +
+# Plot activity by day
+plot_activity <- function(data, title = "Activity by day") {
+  p <- ggplot(data = data, aes(x = .data$time)) +
     geom_line(aes(y = .data$activity)) +
     facet_grid(facets = .data$date ~ .) +
     scale_x_time(
-      breaks = (0:23) * 60 * 60,
-      minor_breaks = (0:23) * 60 * 60,
+      breaks = seq(0, 24, 2) * 60 * 60,
+      minor_breaks = (0:24) * 60 * 60,
       limits = c(0, 60 * 60 * 24)
     ) +
     xlab("Time [sec]") +
     ylab("Acitivity [> 20 counts]") +
+    ggtitle(title) +
     theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+    theme(
+      axis.text.x = element_text(angle = 20, vjust = 0.5, hjust = 1)
+    )
+  return(p)
 }
+
+
+# light by time - filtered by sleep - per day
+
+# light by date_time separate per group

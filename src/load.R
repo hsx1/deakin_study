@@ -3,20 +3,21 @@
 # constants ---------------------------------------------------------------
 
 groups <- c("CLIENT", "PARTNER")
-data_dir <- "./data/raw"
+data_dir <- "./data"
+raw_dir <- file.path(data_dir, "raw")
 re <- c("(C\\d{4})", "(P\\d{4})")
 
 
 # functions ---------------------------------------------------------------
 
 # loads paths of all files in folders structured as original
-load_paths <- function(data_dir = "./data/raw", groups = c("CLIENT", "PARTNER"), re = c("(C\\d{4})", "(P\\d{4})"), complete=FALSE) {
-  # data_dir: directory with raw data
+load_paths <- function(in_dir = "./data/raw", groups = c("CLIENT", "PARTNER"), re = c("(C\\d{4})", "(P\\d{4})"), complete = FALSE) {
+  # in_dir: directory with raw data
   # groups: names of groups
   # re: regular expressions for ids of groups
 
-  client_files <- list.files(path = file.path(data_dir, groups[1]), pattern = re[1], full.names = TRUE)
-  partner_files <- list.files(path = file.path(data_dir, groups[2]), pattern = re[2], full.names = TRUE)
+  client_files <- list.files(path = file.path(in_dir, groups[1]), pattern = re[1], full.names = TRUE)
+  partner_files <- list.files(path = file.path(in_dir, groups[2]), pattern = re[2], full.names = TRUE)
 
   cid_list <- data.frame(
     id = as.numeric(substring(stringr::str_extract(client_files, re[1]), 2)),
@@ -39,8 +40,8 @@ load_paths <- function(data_dir = "./data/raw", groups = c("CLIENT", "PARTNER"),
 
 # parses file to extract statistics
 parse_statistics <- function(f) {
-  if (!(file.exists(f))){
-    warning("File does not exist.")
+  if (!(file.exists(f))) {
+    message(sprintf("File does not exist. Parsing skipped..."))
     return(NULL)
   }
   stats_vars <- c("interval_type", "interval", "start_date", "start_time", "end_date", "end_time", "duration", "off-wrist", "perc_off-wrist", "perc_invalid_sw", "onset_latency", "efficiency", "waso", "wake_time", "perc_wake", "sleep_time", "perc_sleep", "immobile_time", "exposure_white", "avg_white", "max_white", "talt_white", "perc_invalid_white", "exposure_red", "avg_red", "max_red", "talt_red", "perc_invalid_red", "exposure_green", "avg_green", "max_green", "talt_green", "perc_invalid_green", "exposure_blue", "avg_blue", "max_blue", "talt_blue", "perc_invalid_blue")
@@ -57,29 +58,30 @@ parse_statistics <- function(f) {
   statistics <- lcdata[[5]] |>
     dplyr::slice(-c(1:names_idx, names_idx + 1))
   colnames(statistics) <- sub("#", "", sub("%", "perc_", sub(" ", "_", tolower((lcdata[[5]])[names_idx, ]))))
-  if (!(all(stats_vars %in% colnames(statistics)))){
+  if (!(all(stats_vars %in% colnames(statistics)))) {
     message("read_file:\n\tMissing features in statistics table. Returning NULL")
     return(NULL)
-  }else{
-
+  } else {
     statistics <- statistics |>
       dplyr::select(all_of(stats_vars)) |>
       dplyr::mutate("interval_type" = as.character(.data$interval_type)) |>
       dplyr::mutate_at(dplyr::vars(3, 5), ~ as.Date(., "%d/%m/%Y")) |>
       dplyr::mutate_at(dplyr::vars(4, 6), ~ format(strptime(., "%I:%M:%S %p"), "%H:%M:%S")) |>
-      dplyr::mutate_at(dplyr::vars(7:length(stats_vars)),
-                       ~ as.numeric(.))
+      dplyr::mutate_at(
+        dplyr::vars(7:length(stats_vars)),
+        ~ as.numeric(.)
+      )
     return(statistics)
   }
 }
 
 # parses file to extract epochs
 parse_epochs <- function(f) {
-  if (!(file.exists(f))){
-    warning("File does not exist.")
+  if (!(file.exists(f))) {
+    message(sprintf("File does not exist. Parsing skipped..."))
     return(NULL)
   }
-  epoch_vars <- c("line","date","time", "interval_status","off-wrist_status", "activity", "marker", "white_light","red_light", "green_light", "blue_light", "sleep_wake")
+  epoch_vars <- c("line", "date", "time", "interval_status", "off-wrist_status", "activity", "marker", "white_light", "red_light", "green_light", "blue_light", "sleep_wake")
   # read csv
   maxcol <- max(unlist(lapply(strsplit(readLines(f), ","), length)))
   cdata <- read.csv(f, header = FALSE, fill = TRUE, col.names = paste0("V", 1:maxcol))
@@ -107,11 +109,10 @@ parse_epochs <- function(f) {
       dplyr::mutate_at(
         dplyr::vars(4:11),
         ~ as.numeric(.)
-      )
-    epochs <- epochs |>
+      ) |>
       dplyr::mutate(
-        date_time = lubridate::ymd_hms(paste(.data$date, .data$time), tz = "UTC"),
-        time = as.numeric(lubridate::hms(.data$time)),
+        date_time = lubridate::ymd_hms(paste(.data$date, .data$time), tz = "UTC"), # info from file
+        time = hms::as_hms(.data$time),
         date = lubridate::ymd(.data$date)
       )
   }
@@ -119,74 +120,92 @@ parse_epochs <- function(f) {
 }
 
 # loading
-load_statistics <- function(data_dir) {
+process_stats <- function(raw_dir, return_object = FALSE) {
   # load id and both paths
-  dinfo <- load_paths(data_dir, groups, re)
+  dinfo <- load_paths(raw_dir, groups, re)
+
+  dinfo$cstats <- file.path(
+    data_dir, "statistics", "CLIENT", paste0("C", dinfo$id, "_stats", ".rds")
+  )
+  dinfo$pstats <- file.path(
+    data_dir, "statistics", "PARTNER", paste0("P", dinfo$id, "_stats", ".rds")
+  )
 
   # loop over files
   all_statistics <- list()
   for (i in seq_len(nrow(dinfo))) {
     cat(sprintf("Reading statistics of dyad #%s, ID %s.\n", i, dinfo$id[i]))
     # parse client
-    new_basename = gsub(".csv$", ".rds", basename(dinfo$cfile[i]))
     cstats <- rds_cached(
-      filename=sub("/raw/", "/transformed/statistics/", file.path(data_dir, new_basename), fixed = TRUE),
-      fun=parse_statistics,
-      f=dinfo$cfile[i]
+      filename = dinfo$cstats[i],
+      fun = parse_statistics,
+      f = dinfo$cfile[i]
     )
-    if(!is.null(cstats)){
+    if (!is.null(cstats)) {
       cstats <- dplyr::mutate(cstats, group = "C")
     }
     # parse partner epochs
-    new_basename = gsub(".csv$", ".rds", basename(dinfo$pfile[i]))
     pstats <- rds_cached(
-      filename=sub("/raw/", "/transformed/statistics/", file.path(data_dir, new_basename), fixed = TRUE),
-      fun=parse_statistics,
-      f=dinfo$pfile[i]
+      filename = dinfo$pstats[i],
+      fun = parse_statistics,
+      f = dinfo$pfile[i]
     )
-    if(all(!is.null(pstats))){
+    if (all(!is.null(pstats))) {
       pstats <- dplyr::mutate(pstats, group = "P")
     }
     # join in one table
     both_stats <- rbind(cstats, pstats) |> dplyr::mutate(id = dinfo$id[i])
-    # collect dyads in list
-    all_statistics[[paste0("ID", dinfo$id[i])]] <- both_stats
+
+    if (return_object) {
+      # collect dyads in list
+      all_statistics[[paste0("ID", dinfo$id[i])]] <- both_stats
+    }
   }
 }
 
-load_epochs <- function(data_dir) {
+process_epochs <- function(raw_dir, return_object = FALSE) {
   # load id and both paths
-  dinfo <- load_paths(data_dir, groups, re)
+  dinfo <- load_paths(raw_dir, groups, re)
+
+  dinfo$cepochs <- file.path(
+    data_dir, "transforms", "CLIENT", paste0("C", dinfo$id, "_epochs", ".rds")
+  )
+  dinfo$pepochs <- file.path(
+    data_dir, "transforms", "PARTNER", paste0("P", dinfo$id, "_epochs", ".rds")
+  )
 
   # loop over files
   all_epochs <- list()
   for (i in seq_len(nrow(dinfo))) {
     cat(sprintf("Reading epochs of dyad #%s, ID %s.\n", i, dinfo$id[i]))
-    # parse client
-    new_basename = gsub(".csv$", ".rds", basename(dinfo$cfile[i]))
-    cepochs <- rds_cached(
-      filename=sub("/raw/", "/transformed/epochs/", file.path(data_dir, new_basename), fixed = TRUE),
-      fun=parse_epochs,
-      f=dinfo$cfile[i]
-      )
 
-    if(all(!is.null(cepochs))){
-       cepochs <- dplyr::mutate(cepochs, group = "C")
+    # parse client epochs
+    cepochs <- rds_cached(
+      filename = dinfo$cepochs[i],
+      fun = parse_epochs,
+      f = dinfo$cfile[i]
+    )
+    if (all(!is.null(cepochs))) {
+      cepochs <- dplyr::mutate(cepochs, group = "C")
     }
+
     # parse partner epochs
-    new_basename = gsub(".csv$", ".rds", basename(dinfo$pfile[i]))
     pepochs <- rds_cached(
-      filename=sub("/raw/", "/transformed/epochs/", file.path(data_dir, new_basename), fixed = TRUE),
-      fun=parse_epochs,
-      f=dinfo$pfile[i]
-      )
-    if(!is.null(nrow(pepochs))){
+      filename = dinfo$pepochs[i],
+      fun = parse_epochs,
+      f = dinfo$pfile[i]
+    )
+    if (!is.null(nrow(pepochs))) {
       pepochs <- dplyr::mutate(pepochs, group = "P")
     }
+
     # join in one table
     both_epochs <- rbind(cepochs, pepochs) |> dplyr::mutate(id = dinfo$id[i])
+
     # collect dyad in list
-    all_epochs[[paste0("ID", dinfo$id[i])]] <- both_epochs
+    if (return_object) {
+      all_epochs[[paste0("ID", dinfo$id[i])]] <- both_epochs
+    }
   }
   # TODO prune non-matching couples
 }
@@ -194,6 +213,5 @@ load_epochs <- function(data_dir) {
 
 # Execution ---------------------------------------------------------------
 
-#load_epochs(data_dir)
-#load_statistics(data_dir)
-
+# process_epochs(raw_dir)
+# process_stats(raw_dir)
