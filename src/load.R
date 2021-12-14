@@ -5,6 +5,7 @@
 groups <- c("CLIENT", "PARTNER")
 data_dir <- "./data"
 raw_dir <- file.path(data_dir, "raw")
+re_general <- "(C|P)\\d{4}"
 re <- c("(C\\d{4})", "(P\\d{4})")
 
 
@@ -44,7 +45,22 @@ parse_statistics <- function(f) {
     message(sprintf("File does not exist. Parsing skipped..."))
     return(NULL)
   }
-  stats_vars <- c("interval_type", "interval", "start_date", "start_time", "end_date", "end_time", "duration", "off-wrist", "perc_off-wrist", "perc_invalid_sw", "onset_latency", "efficiency", "waso", "wake_time", "perc_wake", "sleep_time", "perc_sleep", "immobile_time", "exposure_white", "avg_white", "max_white", "talt_white", "perc_invalid_white", "exposure_red", "avg_red", "max_red", "talt_red", "perc_invalid_red", "exposure_green", "avg_green", "max_green", "talt_green", "perc_invalid_green", "exposure_blue", "avg_blue", "max_blue", "talt_blue", "perc_invalid_blue")
+  stats_vars <- c(
+    "interval_type", "interval", "start_date", "start_time", "end_date",
+    "end_time", "duration", "off-wrist", "perc_off-wrist", "perc_invalid_sw",
+    "onset_latency", "efficiency", "waso", "wake_time", "perc_wake",
+    "sleep_time", "perc_sleep", "immobile_time", "exposure_white", "avg_white",
+    "max_white", "talt_white", "perc_invalid_white", "exposure_red", "avg_red",
+    "max_red", "talt_red", "perc_invalid_red", "exposure_green", "avg_green",
+    "max_green", "talt_green", "perc_invalid_green", "exposure_blue",
+    "avg_blue", "max_blue", "talt_blue", "perc_invalid_blue"
+    )
+
+  # read group and id
+  group_id <- stringr::str_extract(f, re_general)
+  group <- substring(group_id, first = 1, last = 1)
+  id <- as.numeric(substring(group_id, first = 2))
+
   # read csv
   maxcol <- max(unlist(lapply(strsplit(readLines(f), ","), length)))
   cdata <- read.csv(f, header = FALSE, fill = TRUE, col.names = paste0("V", 1:maxcol))
@@ -64,13 +80,15 @@ parse_statistics <- function(f) {
   } else {
     statistics <- statistics |>
       dplyr::select(all_of(stats_vars)) |>
-      dplyr::mutate("interval_type" = as.character(.data$interval_type)) |>
+      dplyr::mutate(
+        id = id,
+        group = group,
+        interval_type = as.character(.data$interval_type)) |>
       dplyr::mutate_at(dplyr::vars(3, 5), ~ as.Date(., "%d/%m/%Y")) |>
       dplyr::mutate_at(dplyr::vars(4, 6), ~ format(strptime(., "%I:%M:%S %p"), "%H:%M:%S")) |>
       dplyr::mutate_at(
         dplyr::vars(7:length(stats_vars)),
-        ~ as.numeric(.)
-      )
+        ~ as.numeric(.))
     return(statistics)
   }
 }
@@ -82,6 +100,12 @@ parse_epochs <- function(f) {
     return(NULL)
   }
   epoch_vars <- c("line", "date", "time", "interval_status", "off-wrist_status", "activity", "marker", "white_light", "red_light", "green_light", "blue_light", "sleep_wake")
+
+  # read group and id
+  group_id <- stringr::str_extract(f, re_general)
+  group <- substring(group_id, first = 1, last = 1)
+  id <- as.numeric(substring(group_id, first = 2))
+
   # read csv
   maxcol <- max(unlist(lapply(strsplit(readLines(f), ","), length)))
   cdata <- read.csv(f, header = FALSE, fill = TRUE, col.names = paste0("V", 1:maxcol))
@@ -101,11 +125,13 @@ parse_epochs <- function(f) {
     epochs <- NULL
   } else {
     epochs <- epochs |>
-      dplyr::mutate("line" = as.numeric(epochs$line)) |>
-      dplyr::mutate("date" = as.Date(epochs$date, "%d/%m/%Y")) |>
-      dplyr::mutate("time" = format(strptime(epochs$time, "%I:%M:%S %p"), "%H:%M:%S")) |>
-      # time zone irrelevant
-      dplyr::mutate("interval_status" = as.factor(epochs$interval_status)) |>
+      dplyr::mutate(
+        id = id,
+        group = group,
+        line = as.numeric(epochs$line),
+        date = as.Date(epochs$date, "%d/%m/%Y"),
+        time = format(strptime(epochs$time, "%I:%M:%S %p"), "%H:%M:%S"),
+        interval_status = as.factor(epochs$interval_status)) |>
       dplyr::mutate_at(
         dplyr::vars(4:11),
         ~ as.numeric(.)

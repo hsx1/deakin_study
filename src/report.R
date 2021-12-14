@@ -43,11 +43,12 @@ periods_of_target <- function(data, target) {
 
 # Correlograms ------------------------------------------------------------
 
-plot_correlogram <- function(cordata, kind = "auto", ylim, title = "Correlogram", breaks) {
+plot_correlogram <- function(cordata, kind = "auto", ylim, title = "Correlogram", breaks, file_spec) {
   # kind: can be "auto" for autocorrelation, "p-auto" for partial autocorrelation or "cross" for cross-correlation
+  # file_spec: file specification for saving the plot
 
-  x = "lag"
-  ylim = ifelse(missing(ylim), c(min(cordata$acf, cordata$pacf, na.rm = T), 1), ylim)
+  x <- "lag"
+  ylim <- ifelse(missing(ylim), c(min(cordata$acf, cordata$pacf, na.rm = T), 1), ylim)
   if (kind == "auto") {
     title <- ifelse(missing(title), "Autocorrelation", title)
     plot_ac <- ggplot(
@@ -58,14 +59,14 @@ plot_correlogram <- function(cordata, kind = "auto", ylim, title = "Correlogram"
       scale_y_continuous(
         limits = c(min(cordata$acf, cordata$pacf, na.rm = T), 1)
       ) +
-      #scale_x_continuous(breaks = seq(0, 400, 50)) +
+      # scale_x_continuous(breaks = seq(0, 400, 50)) +
       xlab("Lag") +
       ylab("Effect size") +
       ggtitle(title) +
       theme_bw()
+    p <- plot_ac
 
-    return(plot_ac)
-  }else if(kind == "p-auto"){
+  } else if (kind == "p-auto") {
     title <- ifelse(missing(title), "Partial Autocorrelation", title)
     plot_pac <- ggplot(
       cordata,
@@ -79,9 +80,8 @@ plot_correlogram <- function(cordata, kind = "auto", ylim, title = "Correlogram"
       ylab("Effect size") +
       ggtitle(title) +
       theme_bw()
+    p <- plot_pac
 
-    return(plot_pac)
-    # p <- cowplot::plot_grid(plot_ac, plot_pac, nrow = 1)
   } else if (kind == "cross") {
     title <- ifelse(missing(title), "Cross Correlation", title)
     plot_cc <- ggplot(
@@ -93,11 +93,24 @@ plot_correlogram <- function(cordata, kind = "auto", ylim, title = "Correlogram"
       ylab("Effect size") +
       ggtitle(title) +
       theme_bw()
-    return(plot_cc)
+    p <- plot_cc
+
   } else {
     warning("No valid specification.")
     return("")
   }
+
+  # save
+  file_spec <- ifelse(missing(file_spec), "", sprintf("_%s", file_spec))
+  group_folder <- ifelse(data$group[1] == "C", "CLIENT", "PARTNER")
+  id_folder <- data$id[1]
+  save_plot2pdf(
+    filename = file.path(group_folder, id_folder, sprintf("plot_%s%s.pdf", kind,
+                                                          file_spec)),
+    plot = p,
+    w = 200, h = 100
+  )
+  return(p)
 }
 
 
@@ -119,7 +132,7 @@ plot_colorlight <- function(data, title = "Colored light exposure by day", log =
   }
 
   # design part
-  design_p <- raw_p +
+  p <- raw_p +
     scale_x_time(
       breaks = seq(0, 24, 2) * 60 * 60,
       minor_breaks = (0:24) * 60 * 60,
@@ -140,6 +153,13 @@ plot_colorlight <- function(data, title = "Colored light exposure by day", log =
       legend.position = "top",
       axis.text.x = element_text(angle = 20, vjust = 0.5, hjust = 1)
     )
+  group_folder <- ifelse(data$group[1] == "C", "CLIENT", "PARTNER")
+  id_folder <- data$id[1]
+  save_plot2pdf(
+    filename = file.path(group_folder, id_folder, "plot_colorlight.pdf"),
+    plot = p,
+    w = 200, h = 250
+  )
   return(design_p)
 }
 
@@ -163,12 +183,21 @@ plot_whitelight <- function(data, title = "While light exposure by day") {
     theme(
       axis.text.x = element_text(angle = 20, vjust = 0.5, hjust = 1)
     )
+  # save
+  group_folder <- ifelse(data$group[1] == "C", "CLIENT", "PARTNER")
+  id_folder <- data$id[1]
+  save_plot2pdf(
+    filename = file.path(group_folder, id_folder, "plot_whitelight.pdf"),
+    plot = p,
+    w = 200, h = 250
+  )
   return(p)
 }
 
 # Plot activity by day
 plot_activity <- function(data, title = "Activity by day") {
   p <- ggplot(data = data, aes(x = .data$time)) +
+    geom_col(aes(y = 1 - .data$sleep_wake), color = "grey50") +
     geom_line(aes(y = .data$activity)) +
     facet_grid(facets = .data$date ~ .) +
     scale_x_time(
@@ -183,10 +212,46 @@ plot_activity <- function(data, title = "Activity by day") {
     theme(
       axis.text.x = element_text(angle = 20, vjust = 0.5, hjust = 1)
     )
+  # save
+  group_folder <- ifelse(data$group[1] == "C", "CLIENT", "PARTNER")
+  id_folder <- data$id[1]
+  save_plot2pdf(
+    filename = file.path(group_folder, id_folder, "plot_activity.pdf"),
+    plot = p,
+    w = 200, h = 250
+  )
   return(p)
 }
 
+plot_sleep <- function(data, title = "Sleep probability") {
+  p <- ggplot(data = data30, aes(x = .data$time)) +
+    geom_col(aes(y = 1 - .data$sleep_wake)) +
+    facet_grid(facets = .data$date ~ .) +
+    scale_x_time(
+      breaks = seq(0, 24, 2) * 60 * 60,
+      minor_breaks = (0:24) * 60 * 60,
+      limits = c(0, 60 * 60 * 24)
+    ) +
+    xlab("Time [sec]") +
+    ggtitle(title) +
+    theme_bw() +
+    theme(
+      axis.text.x = element_text(angle = 20, vjust = 0.5, hjust = 1)
+    )
 
+  if (unique(data$sleep_wake[!is.na(data$sleep_wake)]) > 2) {
+    p <- p + ylab("Sleep probability for bins [%] (> 10 minute immobile)")
+  }
+  # save
+  group_folder <- ifelse(data$group[1] == "C", "CLIENT", "PARTNER")
+  id_folder <- data$id[1]
+  save_plot2pdf(
+    filename = file.path(group_folder, id_folder, "plot_sleep.pdf"),
+    plot = p,
+    w = 200, h = 250
+  )
+  return(p)
+}
 # light by time - filtered by sleep - per day
 
 # light by date_time separate per group

@@ -120,7 +120,10 @@ get_autocor <- function(data, max_lag = Inf){
 
     # set NA correlations to 0
     ac[[light]]$acf  <- ifelse(is.na(ac[[light]]$acf), 0, ac[[light]]$acf)
-    ac[[light]]$pacf <- ifelse(is.na(ac[[light]]$pacf), 0, ac[[light]]$pacf)
+    ac[[light]]$pacf <- ifelse(is.na(ac[[light]]$pacf), 0, ac[[light]]$pacf)#
+    # group and participant id
+    ac[[light]]$id <- data$id
+    ac[[light]]$group <- data$group
   }
   return(ac)
 }

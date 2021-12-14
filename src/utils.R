@@ -33,6 +33,24 @@ rds_cached <- function(filename, fun, ...) {
   return(re)
 }
 
+# save plot
+save_plot2pdf <- function(filename, plot, w, h){
+  main_dir <- file.path(".", "notebook", "figures")
+  filepath <- file.path(
+    main_dir,
+    filename
+  )
+  dir.create(dirname(filepath), recursive = TRUE, showWarnings = FALSE)
+  ggplot2::ggsave(
+    file = filepath,
+    plot = plot,
+    width = w,
+    height = h,
+    units = "mm"
+  )
+  cprint(txt=sprintf("Figure saved in: %s\n", filepath), colour="w")
+}
+
 
 # console -----------------------------------------------------------------
 

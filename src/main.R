@@ -9,24 +9,27 @@ main <- function(select_id = 1045){
 
   process_epochs(raw_dir, return_object = FALSE)
   process_stats(raw_dir, return_object = FALSE)
-  epochsinfo <- load_paths(in_dir = file.path(data_dir, "transforms"))
-  statsinfo <- load_paths(in_dir = file.path(data_dir, "statistics"))
+  epochsinfo <- load_paths(in_dir = file.path(data_dir, "transforms")) |>
+    tidyr::pivot_longer(cols = c("cfile", "pfile"), names_to = "group")
+  statsinfo <- load_paths(in_dir = file.path(data_dir, "statistics")) |>
+    tidyr::pivot_longer(cols = c("cfile", "pfile"), names_to = "group")
 
   # merge
-  infofiles <- full_join(epochsinfo, statsinfo, by = "id")
-  colnames(infofiles) <- c("id", "cepoch", "pepoch", "cstats", "pstats")
+  infofiles <- full_join(epochsinfo, statsinfo, by = c("id", "group")) |>
+    dplyr::mutate(group = dplyr::recode(.x = .data$group, pfile = "P", cfile = "C"))
+  colnames(infofiles) <- c("id", "group", "epochs", "aggstats")
 
   if (select_id) {
     infofiles <- infofiles[infofiles$id == select_id, ]
   }
 
-  for (dyad in seq_len(nrow(infofiles))) {
-    cdata <- readRDS(infofiles$cepoch)
-    pdata <- readRDS(infofiles$pepoch)
-    cstats <- readRDS(infofiles$cstats)
-    pstats <- readRDS(infofiles$pstats)
+  for (i in seq_len(nrow(infofiles))) {
 
-    # analysis(data, st)
+    if (!is.na(infofiles$epochs[i])){
+      data <- readRDS(infofiles$epochs[i])
+      aggstats <- readRDS(infofiles$aggstats[i])
+      preprocess(data, aggstats)
+    }
   }
 
 }
