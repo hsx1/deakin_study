@@ -6,12 +6,42 @@ output: html_document
 ---
 
 ```{r include=FALSE}
-source("./src/main.R")
-main()
-data <- readRDS("./data/preprocessed/CLIENT/C1045_epochs.rds")
-aggstats <- readRDS("./data/statistics/CLIENT/C1045_stats.rds")
-binned_data <- inspection(data, aggstats)
+# DO NOT SOURCE ANYTHING ELSE
+source("./src/config.R")
 ```
+
+# Inspection of one example dataset
+
+The example data is actigraphy data of a dyad with one client and their partner. 
+
+```{r echo=FALSE}
+# load C1045
+c_expl <- load_data(select_id = "C1045", return_data = TRUE)
+cdata <- c_expl$epochs
+cstats <- c_expl$aggstats
+
+p_expl <- load_data(select_id = "P1045", return_data = TRUE)
+pdata <- p_expl$epochs
+pstats <- p_expl$aggstats
+
+data <- rbind(cdata, pdata)
+aggstats <- rbind(cstats, pstats)
+```
+The data was sampled with `r 1` Hz for each epoch and consists of `r nrow(cdata)` epochs from the client, and `r nrow(pdata)` epochs from the partner.
+
+```{r}
+# 
+```
+
+
+```{r}
+# process dyad
+
+anker <- min(cdata$date_time, pdata$date_time)
+# join der Datensätze, hinzufügen der column
+
+```
+
 
 # Analysis on single dyad/ participants
 
@@ -34,12 +64,15 @@ Additional thoughts:
 
 
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 
 # select sleep time
 sleep <- data |>
   dplyr::filter(.data$interval_status == "REST-S") |>
   dplyr::select(dplyr::all_of(c("id", "group", "date_time", "date", "time", "interval_status", "sleep_wake", "activity", light_cols)))
+
+# TODO density plots
+# assumption tests
 
 # create 30-minute bins
 sleep10 <- sleep |>
@@ -55,7 +88,10 @@ sleep10 <- sleep |>
     sub_id = sleep$sub_id[1]
   )
 
+```
 
+
+```{r eval=FALSE, include=FALSE}
 model <- "sleep_wake ~ time + partner_activity + white_light + red_light + blue_light + green_light"
 fit <- lm(model, data = sleep10)
 summary(fit)

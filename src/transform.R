@@ -1,5 +1,8 @@
 # FORMAT
 
+
+# binning -----------------------------------------------------------------
+
 # Bin time series RELATIVE to anker
 bin_series_at_anker <- function(data, target_cols, rel_col, bin_size, save = FALSE){
   # Computes average for target variables and bin interval (in steps of anker unit)
@@ -89,8 +92,30 @@ bin_series_at_datetime <- function(data, target_cols, minute_interval = 30, save
   return(binned_data)
 }
 
+
+# Helper function to calculate datasets with different bion size at once
+calc_multiple_bins <- function(data, bin_sizes = c(5,10,30,60)){
+  # bin_sized: numeric vector, in minutes
+  # return: list of data frames names e.g. data30 for bin_sizes = 30
+
+  binned_data <- list()
+  for (bin in bin_sizes){
+    binned_data[[paste0("data", bin)]] <- bin_series_at_anker(
+      data,
+      target_cols,
+      rel_col = "nrel_date_time",
+      bin_size = 5
+    ) |>
+      dplyr::mutate(sid = data$sid[1], group = data$group[1], id = data$id[1])
+  }
+  return(binned_data)
+}
+
+
+# autocorrelations and cross-correlations ---------------------------------
+
 # Get autocorrelations of light and activity
-get_autocor <- function(data, max_lag = Inf){
+get_autocor <- function(data, target_cols = c("activity", light_cols), max_lag = Inf){
   # data: dataset
   # max_lag: maximum lag in correlation
   # bin_size = (data$date_time[2] - data$date_time[1]); day_span = 2
@@ -99,41 +124,41 @@ get_autocor <- function(data, max_lag = Inf){
   # resource (https://rh8liuqy.github.io/ACF_PACF_by_ggplot2.html#correlogram-by-ggplot2)
   ac <- list()
   maximum_lag <- max_lag
-  for (light in c("activity", light_cols)) {
+  for (target in target_cols) {
     light_acf <- stats::acf(
       plot = FALSE,
-      x = data[[light]],
+      x = data[[target]],
       type = "correlation",
       na.action = na.pass,
       lag.max = maximum_lag
     )
     light_pacf <- stats::acf(
       plot = FALSE,
-      x = data[[light]],
+      x = data[[target]],
       type = "partial",
       na.action = na.pass,
       lag.max = maximum_lag
     )
 
     # collect (note, first element of pacf not existent, thus NA)
-    ac[[light]] <- data.frame(
+    ac[[target]] <- data.frame(
       lag = light_acf$lag,
       acf = light_acf$acf,
       pacf = c(NA, light_pacf$acf)
     )
 
     # set NA correlations to 0
-    ac[[light]]$acf  <- ifelse(is.na(ac[[light]]$acf), 0, ac[[light]]$acf)
-    ac[[light]]$pacf <- ifelse(is.na(ac[[light]]$pacf), 0, ac[[light]]$pacf)#
+    ac[[target]]$acf  <- ifelse(is.na(ac[[target]]$acf), 0, ac[[target]]$acf)
+    ac[[target]]$pacf <- ifelse(is.na(ac[[target]]$pacf), 0, ac[[target]]$pacf)#
     # group and participant id
-    ac[[light]]$id <- data$id
-    ac[[light]]$group <- data$group
+    ac[[target]]$id <- data$id
+    ac[[target]]$group <- data$group
   }
   return(ac)
 }
 
 # Get cross correlation of activity with light
-get_crosscor <- function(data, max_lag = Inf){
+get_crosscor <- function(data, activity_col = "activity", light_cols = light_cols, max_lag = Inf){
   # data: dataset
   # max_lag: maximum lag in correlation
   #   bin_size = (data$date_time[2] - data$date_time[1]); day_span = 2
@@ -144,7 +169,7 @@ get_crosscor <- function(data, max_lag = Inf){
   for (light in light_cols) {
     cc[[light]] <- stats::ccf(
       plot = FALSE,
-      data$activity,
+      data[[activity_col]],
       data[[light]],
       type = "correlation",
       na.action = na.pass,

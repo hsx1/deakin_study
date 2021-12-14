@@ -120,13 +120,15 @@ plot_correlogram <- function(cordata, kind = "auto", ylim, title = "Correlogram"
 plot_colorlight <- function(data, title = "Colored light exposure by day", log = FALSE) {
 
   # structural part
-  longdata <- data |> tidyr::pivot_longer(cols = c("red_light", "green_light", "blue_light"))
+  longdata <- data |>
+    tidyr::pivot_longer(cols = c("red_light", "green_light", "blue_light")) |>
+    tidyr::drop_na()
   if (log) {
-    raw_p <- ggplot(data = longdata, aes(x = .data$time, color = .data$name)) +
+    raw_p <- ggplot(data = longdata, aes(x = .data$time, color = .data$name, na.rm = TRUE)) +
       geom_line(aes(y = log(.data$value))) +
       facet_grid(facets = .data$date ~ .)
   } else {
-    raw_p <- ggplot(data = longdata, aes(x = .data$time, color = .data$name)) +
+    raw_p <- ggplot(data = longdata, aes(x = .data$time, color = .data$name, na.rm = TRUE)) +
       geom_line(aes(y = .data$value)) +
       facet_grid(facets = .data$date ~ .)
   }
@@ -160,6 +162,7 @@ plot_colorlight <- function(data, title = "Colored light exposure by day", log =
     plot = p,
     w = 200, h = 250
   )
+
   return(p)
 }
 
@@ -196,6 +199,7 @@ plot_whitelight <- function(data, title = "While light exposure by day") {
 
 # Plot activity by day
 plot_activity <- function(data, title = "Activity by day") {
+
   p <- ggplot(data = data, aes(x = .data$time)) +
     geom_col(aes(y = 1 - .data$sleep_wake), color = "grey50") +
     geom_line(aes(y = .data$activity)) +
@@ -224,7 +228,7 @@ plot_activity <- function(data, title = "Activity by day") {
 }
 
 plot_sleep <- function(data, title = "Sleep probability") {
-  p <- ggplot(data = data30, aes(x = .data$time)) +
+  p <- ggplot(data = data, aes(x = .data$time)) +
     geom_col(aes(y = 1 - .data$sleep_wake)) +
     facet_grid(facets = .data$date ~ .) +
     scale_x_time(
@@ -239,7 +243,7 @@ plot_sleep <- function(data, title = "Sleep probability") {
       axis.text.x = element_text(angle = 20, vjust = 0.5, hjust = 1)
     )
 
-  if (unique(data$sleep_wake[!is.na(data$sleep_wake)]) > 2) {
+  if (length(unique(data$sleep_wake[!is.na(data$sleep_wake)])) > 2) {
     p <- p + ylab("Sleep probability for bins [%] (> 10 minute immobile)")
   }
   # save
