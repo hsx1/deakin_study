@@ -1,7 +1,7 @@
 # FORMAT
 
 # Bin time series RELATIVE to anker
-bin_series_at_anker <- function(data, target_cols, rel_col, bin_size){
+bin_series_at_anker <- function(data, target_cols, rel_col, bin_size, save = FALSE){
   # Computes average for target variables and bin interval (in steps of anker unit)
   #
   # target_cols: vector, columns to summarize for bins
@@ -31,11 +31,17 @@ bin_series_at_anker <- function(data, target_cols, rel_col, bin_size){
   binned_data <- tmp |>
     dplyr::group_by(.data$bin) |>
     dplyr::summarize_at(dplyr::all_of(c(rel_col, target_cols)), mean, na.rm=T)
+
+  binned_data <- binned_data |>
+    dplyr::mutate(
+      time = hms::as_hms(.data$date_time),
+      date = lubridate::as_date(.data$date_time)
+    )
   return(binned_data)
 }
 
 # Bin time series ABSOLUTE with date_time column
-bin_series_at_datetime <- function(data, target_cols, minute_interval = 30){
+bin_series_at_datetime <- function(data, target_cols, minute_interval = 30, save = FALSE){
   # Computed average for target variables and bin interval [in minutes]
   #
   # data: dataset
@@ -69,6 +75,12 @@ bin_series_at_datetime <- function(data, target_cols, minute_interval = 30){
     dplyr::group_by(.data$date_time) |>
     dplyr::summarize_at(dplyr::all_of(c(target_cols)), mean, na.rm=T)
 
+  binned_data <- binned_data |>
+    dplyr::mutate(
+      time = hms::as_hms(.data$date_time),
+      date = lubridate::as_date(.data$date_time)
+    )
+
   # number of valid values per bin
   # tmp |>
   #   dplyr::group_by(.data$bin) |>
@@ -76,14 +88,6 @@ bin_series_at_datetime <- function(data, target_cols, minute_interval = 30){
 
   return(binned_data)
 }
-
-# Construct moving average at bin size [UNIFINISHED]
-moving_time_average <- function(data, target, min_interval = 30){
-  size = min_interval
-  data$new_var <- stats::filter(data[[target]], filter = rep(1 / size, size), sides = 2)
-  colnames(data[,"new_var"]) <- paste0(target, "_mov")
-}
-
 
 # Get autocorrelations of light and activity
 get_autocor <- function(data, max_lag = Inf){

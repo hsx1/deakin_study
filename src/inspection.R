@@ -1,13 +1,16 @@
-# PREPROCESSING
+# INSPECTION
 
-# Preprocessing single individuals data
-preprocess <- function(data, aggstats, plotting = FALSE) {
+# constants
+light_cols <- c("white_light", "red_light", "blue_light", "green_light")
+target_cols <- c("date_time", "sleep_wake", "activity", light_cols)
+
+# Inspection single individuals data
+inspection <- function(data, aggstats, plotting = FALSE) {
   # data: data of epochs
   # aggstats: statistics of aggregated data
 
   # configuration
-  light_cols <- c("white_light", "red_light", "blue_light", "green_light")
-  target_cols <- c("date_time", "sleep_wake", "activity", light_cols)
+  sub_id <- paste0(data$group[1], data$id[1])
   current_group = data$group[1]
   current_id = data$id[1]
 
@@ -59,7 +62,9 @@ preprocess <- function(data, aggstats, plotting = FALSE) {
   data <- dplyr::mutate(data, nrel_date_time = (as.numeric(.data$date_time - .data$date_time[1]) / 60))
 
   # in 5-minute bins, in 30-minute bins, in 60 minute bins
-  data5 <- bin_series_at_anker(data, target_cols,
+  data5 <- bin_series_at_anker(
+    data,
+    target_cols,
     rel_col = "nrel_date_time",
     bin_size = 5
     ) |>
@@ -70,7 +75,9 @@ preprocess <- function(data, aggstats, plotting = FALSE) {
       id = current_id
     )
 
-  data30 <- bin_series_at_anker(data, target_cols,
+  data30 <- bin_series_at_anker(
+    data,
+    target_cols,
     rel_col = "nrel_date_time",
     bin_size = 30
     ) |>
@@ -81,7 +88,9 @@ preprocess <- function(data, aggstats, plotting = FALSE) {
       id = current_id
     )
 
-  data60 <- bin_series_at_anker(data, target_cols,
+  data60 <- bin_series_at_anker(
+    data,
+    target_cols,
     rel_col = "nrel_date_time",
     bin_size = 60
     ) |>
@@ -91,6 +100,12 @@ preprocess <- function(data, aggstats, plotting = FALSE) {
       group = current_group,
       id = current_id
     )
+
+  binned_data = list(
+    data5 = data5,
+    data30 = data30,
+    data60 = data60
+  )
 
 
   # Regularity --------------------------------------------------------------
@@ -115,6 +130,7 @@ preprocess <- function(data, aggstats, plotting = FALSE) {
 
   # plot correlograms
   bin_size = as.numeric(data30$time[2]-data30$time[1]) / 60
+
   var_names <- names(ac_list)
   ac_plot_list <- list(); pac_plot_list <- list()
   for (i in seq(ac_list)){
@@ -144,8 +160,6 @@ preprocess <- function(data, aggstats, plotting = FALSE) {
 
   cprint("All variables visually show periodicity of 24 hour.\n", colour = "y")
 
-  # TODO entropy
-
   # Correlation -------------------------------------------------------------
 
   # cross correlations of activity and lights
@@ -168,4 +182,6 @@ preprocess <- function(data, aggstats, plotting = FALSE) {
       plot(cc_plot_list[[var_name]])
     }
   }
+
+  return(binned_data)
 }

@@ -131,7 +131,7 @@ parse_epochs <- function(f) {
         line = as.numeric(epochs$line),
         date = as.Date(epochs$date, "%d/%m/%Y"),
         time = format(strptime(epochs$time, "%I:%M:%S %p"), "%H:%M:%S"),
-        interval_status = as.factor(epochs$interval_status)) |>
+        interval_status = as.character(epochs$interval_status)) |>
       dplyr::mutate_at(
         dplyr::vars(4:11),
         ~ as.numeric(.)
@@ -145,11 +145,10 @@ parse_epochs <- function(f) {
   return(epochs)
 }
 
-# loading
-process_stats <- function(raw_dir, return_object = FALSE) {
-  # load id and both paths
-  dinfo <- load_paths(raw_dir, groups, re)
+# processing stats
+process_stats <- function(dinfo, return_object = FALSE) {
 
+  # new filepaths
   dinfo$cstats <- file.path(
     data_dir, "statistics", "CLIENT", paste0("C", dinfo$id, "_stats", ".rds")
   )
@@ -167,7 +166,7 @@ process_stats <- function(raw_dir, return_object = FALSE) {
       fun = parse_statistics,
       f = dinfo$cfile[i]
     )
-    if (!is.null(cstats)) {
+    if (all(!is.null(cstats))) {
       cstats <- dplyr::mutate(cstats, group = "C")
     }
     # parse partner epochs
@@ -189,15 +188,15 @@ process_stats <- function(raw_dir, return_object = FALSE) {
   }
 }
 
-process_epochs <- function(raw_dir, return_object = FALSE) {
-  # load id and both paths
-  dinfo <- load_paths(raw_dir, groups, re)
+# processing epochs
+process_epochs <- function(dinfo, return_object = FALSE) {
 
+  # new filepaths
   dinfo$cepochs <- file.path(
-    data_dir, "transforms", "CLIENT", paste0("C", dinfo$id, "_epochs", ".rds")
+    data_dir, "preprocessed", "CLIENT", paste0("C", dinfo$id, "_epochs", ".rds")
   )
   dinfo$pepochs <- file.path(
-    data_dir, "transforms", "PARTNER", paste0("P", dinfo$id, "_epochs", ".rds")
+    data_dir, "preprocessed", "PARTNER", paste0("P", dinfo$id, "_epochs", ".rds")
   )
 
   # loop over files
@@ -225,19 +224,11 @@ process_epochs <- function(raw_dir, return_object = FALSE) {
       pepochs <- dplyr::mutate(pepochs, group = "P")
     }
 
-    # join in one table
-    both_epochs <- rbind(cepochs, pepochs) |> dplyr::mutate(id = dinfo$id[i])
-
     # collect dyad in list
     if (return_object) {
+      both_epochs <- rbind(cepochs, pepochs) |> dplyr::mutate(id = dinfo$id[i])
       all_epochs[[paste0("ID", dinfo$id[i])]] <- both_epochs
     }
   }
   # TODO prune non-matching couples
 }
-
-
-# Execution ---------------------------------------------------------------
-
-# process_epochs(raw_dir)
-# process_stats(raw_dir)

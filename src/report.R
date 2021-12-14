@@ -160,7 +160,7 @@ plot_colorlight <- function(data, title = "Colored light exposure by day", log =
     plot = p,
     w = 200, h = 250
   )
-  return(design_p)
+  return(p)
 }
 
 

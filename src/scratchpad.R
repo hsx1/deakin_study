@@ -42,6 +42,12 @@ extract_na_periods <- function(data, target) {
   return(na_periods)
 }
 
+# Construct moving average at bin size [UNIFINISHED]
+moving_time_average <- function(data, target, min_interval = 30){
+  size = min_interval
+  data$new_var <- stats::filter(data[[target]], filter = rep(1 / size, size), sides = 2)
+  colnames(data[,"new_var"]) <- paste0(target, "_mov")
+}
 
 # misc --------------------------------------------------------------------
 x <- 1479974700

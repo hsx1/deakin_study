@@ -15,7 +15,8 @@ library("hms")
 
 source("./src/load.R")
 source("./src/report.R")
-source("./src/format.R")
+source("./src/transform.R")
+source("./src/inspection.R")
 
 # save --------------------------------------------------------------------
 
