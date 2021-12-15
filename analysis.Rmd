@@ -6,40 +6,243 @@ output: html_document
 ---
 
 ```{r include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, out.width = "100%")
 # DO NOT SOURCE ANYTHING ELSE
 source("./src/config.R")
+save_plot <- FALSE
 ```
 
-# Inspection of one example dataset
+
+# Inspection of single dataset
+
+```{r include=FALSE}
+cdata <- load_data(select_id = "C1045", return_data = TRUE)
+cstats <- load_stats(select_id = "C1045", return_data = TRUE)
+
+pdata <- load_data(select_id = "P1045", return_data = TRUE)
+pstats <- load_stats(select_id = "P1045", return_data = TRUE)
+```
 
 The example data is actigraphy data of a dyad with one client and their partner. 
+The data was sampled with `r 1` Hz in 60-second epochs. Participants have different measurement coverage. 
 
-```{r echo=FALSE}
-# load C1045
-c_expl <- load_data(select_id = "C1045", return_data = TRUE)
-cdata <- c_expl$epochs
-cstats <- c_expl$aggstats
-
-p_expl <- load_data(select_id = "P1045", return_data = TRUE)
-pdata <- p_expl$epochs
-pstats <- p_expl$aggstats
-
-data <- rbind(cdata, pdata)
-aggstats <- rbind(cstats, pstats)
+```{r include=FALSE}
+cinfo <- timeseries_characteristics(cdata, cstats, verbose = TRUE)
 ```
-The data was sampled with `r 1` Hz for each epoch and consists of `r nrow(cdata)` epochs from the client, and `r nrow(pdata)` epochs from the partner.
-
-```{r}
-# 
+The client's epochs start at `r min(cdata$date_time)` and end at `r max(cdata$date_time)`. 
+The time series spans `r cinfo$status_tab$n[cinfo$status_tab$interval_type == "DAILY"]` days, including `r cinfo$status_tab$n[cinfo$status_tab$interval_type == "ACTIVE"]` ACTIVE periods, `r cinfo$status_tab$n[cinfo$status_tab$interval_type == "REST"]` REST periods and `r cinfo$status_tab$n[cinfo$status_tab$interval_type == "SLEEP"]` SLEEP periods. The dataset contains `r cinfo$complete_tab$n_obs` observations, `r cinfo$complete_tab$n_complete` complete observations with data in all variables, `r cinfo$complete_tab$t_interval_missing` hours are not covered (`r round(cinfo$complete_tab$perc_missing, 2)`%).
+`r nrow(cinfo$na_tab)` periods of at least 1 minute have missing observations in one or more variables.
+```{r include=FALSE}
+pinfo <- timeseries_characteristics(pdata, pstats, verbose = TRUE)
 ```
 
+The partner's epochs start later, at `r min(pdata$date_time)` and end at `r max(cdata$date_time)`. 
+The time series spans `r pinfo$status_tab$n[pinfo$status_tab$interval_type == "DAILY"]` days, including `r pinfo$status_tab$n[pinfo$status_tab$interval_type == "ACTIVE"]` ACTIVE periods, `r pinfo$status_tab$n[pinfo$status_tab$interval_type == "REST"]` REST periods and `r pinfo$status_tab$n[pinfo$status_tab$interval_type == "SLEEP"]` SLEEP periods. The dataset contains `r pinfo$complete_tab$n_obs` observations, `r pinfo$complete_tab$n_complete` complete observations with data in all variables, `r pinfo$complete_tab$t_interval_missing` hours are not covered (`r round(pinfo$complete_tab$perc_missing, 2)`%).
+`r nrow(pinfo$na_tab)` periods of at least 1 minute have missing observations in one or more variables.
 
-```{r}
-# process dyad
+Investigations of time periods where one or more variables are missing suggest, failure to records stems from taking of the device, e.g. for showering in the morning, forgetting to put the device on again (several hours missing), or technical failures (several minutes missing).
+```{r eval=FALSE, include=FALSE}
+cinfo$na_tab
+pinfo$na_tab
+```
+
+
+```{r include=FALSE}
+# process dyad data
+dydata <- dplyr::full_join(cdata, pdata, by = c("group", "id", "date_time"))
+dy_cols <- colnames(dydata)
+dy_cols <- ifelse(grepl(".x$", dy_cols), paste0("c_", sub(".x", "", dy_cols)), dy_cols)
+dy_cols <- ifelse(grepl(".y$", dy_cols), paste0("p_", sub(".y", "", dy_cols)), dy_cols)
+colnames(dydata) <- dy_cols
 
 anker <- min(cdata$date_time, pdata$date_time)
-# join der Datensätze, hinzufügen der column
+# join der Datensätze, Hinzufügen der column
+```
 
+
+## Smoothing
+
+```{r include=FALSE}
+# construct relative time at anker, here experiment begin
+# calculate in 5-minute bins, in 30-minute bins, in 60 minute bins
+binned_cdata <- cdata |>
+  dplyr::mutate(nrel_date_time = (as.numeric(.data$date_time - .data$date_time[1]) / 60)) |>
+  calc_multiple_bins(rel_col = "nrel_date_time", bin_sizes = c(5, 10, 20, 30, 60)) |>
+  dplyr::bind_rows()
+
+merged_binned_cdata <- dplyr::bind_rows(binned_cdata)
+
+p_all_bins <- ggplot(data = merged_binned_cdata, aes(x = .data$time, color = as.factor(.data$bin_size))) +
+  geom_line(aes(y = .data$white_light)) +
+  facet_grid(facets = .data$date ~ .) +
+  scale_y_continuous(trans = "log10", labels = scales::comma) +
+  scale_x_time(
+    breaks = seq(0, 24, 2) * 60 * 60,
+    minor_breaks = (0:24) * 60 * 60,
+    limits = c(0, 60 * 60 * 24)
+  ) +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+    x = "Time [hh:mm:ss]",
+    y = "White light [lux]",
+    color = "Bin size [min]"
+  ) +
+  ggtitle("White light exposure of client by day depending on bin size") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 20, vjust = 0.5, hjust = 1),
+    legend.position = "top"
+  )
+```
+
+
+```{r echo=FALSE, out.width="100%", fig.cap="Figure 1. White light exposure, log scaled.", fig.height=9, fig.width=7, warning=FALSE}
+p_all_bins
+```
+Visual inspection of the time course of white light exposure with different time bins suggests that bin of 20 and even more 30 minutes may capture relevant variation best while smoothing over noisy variation. Smaller bins (e.g. 5 or 10 minutes) heavily depend on occasional extreme values, while larger bins (e.g. 60 minutes) flatten regional changes that may still be of interest. Thus, further analysis is based on 30-minute bins.
+
+
+## Mean light exposure and activity
+
+```{r include=FALSE}
+bin_size <- 30
+binned_pdata <- pdata |>
+  dplyr::mutate(nrel_date_time = (as.numeric(.data$date_time - .data$date_time[1]) / 60)) |>
+  calc_multiple_bins(rel_col = "nrel_date_time", bin_sizes = bin_size) |>
+  dplyr::bind_rows()
+
+cdata30 <- binned_cdata[binned_cdata$bin_size == bin_size, ]
+cp_color <- plot_colorlight(cdata30, title = "Light exposure of client\n  in 30-minute bins", log = TRUE, save_plot = save_plot)
+cp_white <- plot_whitelight(cdata30, title = "White light exposure of client\n  in 30-minute bins", save_plot = save_plot)
+cp_activity <- plot_activity(cdata30, title = "Activity of client in 30-minute bins", save_plot = save_plot)
+cp_sleep <- plot_sleep(cdata30, title = "% Sleep recording of client\n  in 30-minute bins", save_plot = save_plot)
+
+pdata30 <- binned_pdata[binned_pdata$bin_size == bin_size, ]
+pp_color <- plot_colorlight(pdata30, title = "Light exposure of partner\n  in 30-minute bins", log = TRUE, save_plot = save_plot)
+pp_white <- plot_whitelight(pdata30, title = "White light exposure of partner\n  in 30-minute bins", save_plot = save_plot)
+pp_activity <- plot_activity(pdata30, title = "Activity of partner in 30-minute bins", save_plot = save_plot)
+pp_sleep <- plot_sleep(pdata30, title = "% Sleep recording of partner\n  in 30-minute bins", save_plot = save_plot)
+```
+
+```{r echo=FALSE, out.width="100%", fig.cap="Figure ", fig.height=9, fig.width=7, warning=FALSE}
+gridExtra::grid.arrange(cp_color, pp_color, ncol = 2)
+```
+
+```{r echo=FALSE, out.width="100%", fig.cap="Figure ", fig.height=9, fig.width=7, warning=FALSE}
+gridExtra::grid.arrange(cp_white, pp_white, ncol = 2)
+```
+
+```{r echo=FALSE, out.width="100%", fig.cap="Figure ", fig.height=9, fig.width=7, warning=FALSE}
+gridExtra::grid.arrange(cp_activity, pp_activity, ncol = 2)
+```
+
+```{r echo=FALSE, out.width="100%", fig.cap="Figure ", fig.height=9, fig.width=7, warning=FALSE}
+gridExtra::grid.arrange(cp_sleep, pp_sleep, ncol = 2)
+```
+
+The clients has lower fractions of sleep recording during night time hours and generally less sleep recording than the partner, descriptively confirming sleep disturbance in accordance with the diagnosis.
+With respect, to light exposure and activity levels, the client and their partner may differ slightly, but not enough to establish presence of a difference by visual inspection of the time series.
+
+
+## Regularity light exposure and activity
+
+Regularity of light exposure and activity across the time of data collection be examined visually.
+
+```{r include=FALSE, fig.cap="Figure"}
+dyad <- list(client = cdata30, partner = pdata30)
+# plots
+plot_lists <- lapply(names(dyad), \(data_name){
+  # autocorrelation and partial autocorrelation for client
+  data <- dyad[[data_name]]
+  autocor_list <- get_autocor(data, max_lag = Inf)
+  var_names <- names(autocor_list)
+  auto_plots <- list()
+  partial_plots <- list()
+
+  for (i in seq(autocor_list)) {
+    var_name <- sub("_", " ", var_names[i])
+    current_autocor <- autocor_list[[i]]
+    # autocorrelation plot
+    auto_plots[[var_name]] <- plot_correlogram(
+      cordata = current_autocor,
+      data = data,
+      kind = "auto",
+      subtitle = str_capitalize(sprintf(
+        "%s for %s in %.0f-minute bins",
+        var_name, data_name, bin_size
+      )),
+      plot_xlim = c(0, 200),
+      save_plot = save_plot
+    )
+    # partial autocorrelation plot
+    partial_plots[[var_name]] <- plot_correlogram(
+      cordata = current_autocor,
+      data = data,
+      kind = "p-auto",
+      subtitle = str_capitalize(sprintf(
+        "%s for %s in %.0f-minute bins",
+        var_name, data_name, bin_size
+      )),
+      plot_xlim = c(0, 200),
+      save_plot = save_plot
+    )
+  }
+  list(auto = auto_plots, partial = partial_plots)
+})
+names(plot_lists) <- names(dyad)
+```
+
+```{r echo=FALSE, fig.width=18, warning=FALSE}
+for (target in names(plot_lists[[1]][[1]])) {
+  out_grobs <- list()
+  index <- 1
+  for (group in c("client", "partner")) {
+    for (def in c("auto", "partial")) {
+      out_grobs[[index]] <-
+        plot_lists[[group]][[def]][[target]]
+      index <- index + 1
+    }
+  }
+
+  gridExtra::grid.arrange(
+    grobs = out_grobs,
+    ncol = 4
+  )
+}
+```
+
+Visually, autocorrelations for activity do not differ between client and partner. Activity, as the only endogenous variable, clearly shows a regular circadian rhythm. For the other exogenous variables, white light, red light, blue light, and green light, autocorrelations are less pronounced for the client compared to the partner. Only autocorrelations of red light reveal disrupted circadian rhythm for the client but not for the partner.
+Quantitatively, the maximum of autocorrelations in a window between 12 and 36 hours are around 24 hours for both, client and partner, and thus do not suggest any deviation from circadian rhythm (see below).
+For detailed quantitative evaluation of regularity and periodicity, other statistical means may be employed, such as time frequency analysis.
+
+```{r message=FALSE, warning=FALSE}
+# autocorrelation and partial autocorrelation for client
+all_autocor <- lapply(dyad, \(data){
+  autocor_list <- get_autocor(data, max_lag = Inf)
+  dplyr::bind_rows(autocor_list, .id="target")
+}) |> 
+  dplyr::bind_rows(.id="group_name") |>
+  tidyr::pivot_longer(cols=c("acf","pacf"), names_to = "cor_def", values_to = "cor_val")
+
+# extract lag (after 12h) with highest autocorrelation / partial autocorrelation
+# and compute minute of highest autocorrelation (mid of bin)
+all_autocor |> 
+  dplyr::filter(.data$cor_def == "acf") |>
+  dplyr::group_by(group_name, target) |>
+  # filter 12h < x < 36h after start_time
+  dplyr::filter(.data$lag > (12*60/bin_size),
+                .data$lag < (36*60/bin_size)) |>
+  dplyr::summarise(bin_max_val = .data$lag[which.max(.data$cor_val)]) |>
+  dplyr::mutate(minute_max_val = bin_max_val*bin_size,
+                blob = hms::as_hms(minute_max_val*60)) |>
+  dplyr::arrange(target) |>
+  dplyr::mutate(group_name = str_snake2human(.data$group_name),
+                target = str_snake2human(.data$target)) |>
+  dplyr::select(dplyr::all_of(c("target", "group_name", "blob"))) |>
+  dplyr::rename(`Group name` = group_name, Target = target, `Time of maximum AC` = blob) |>
+  kableExtra::kbl() |>
+  kableExtra::footnote("AC: Autocorrelation") |>
+  kableExtra::kable_paper()
 ```
 
 
@@ -54,12 +257,14 @@ summarized for interval type = SLEEP periods as single observations.
 Possible approaches/ hypotheses:
 
 Sleep status over time in 10-minute bins depends on...
+
 - insomnia diagnosis.
 - current light exposure.
 - current partner on partner-activity.
 - interaction of insomnia diagnosis and partner-activity.
 
 Additional thoughts:
+
 - Sleep status and activity are correlated and have a common cause.
 
 
@@ -87,7 +292,6 @@ sleep10 <- sleep |>
     group = sleep$group[1],
     sub_id = sleep$sub_id[1]
   )
-
 ```
 
 

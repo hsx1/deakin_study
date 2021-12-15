@@ -208,7 +208,7 @@ process_epochs <- function(dinfo, return_data = FALSE) {
   return(all_epochs)
 }
 
-# Loads epochs and statistics from original file
+# Loads epochs from original file
 load_data <- function(select_id = FALSE, return_data = FALSE){
   # Cave: if files have never been parsed and saved before, this may take some
   #   minutes depending on the number of select_id s.
@@ -221,8 +221,25 @@ load_data <- function(select_id = FALSE, return_data = FALSE){
     dinfo <- dinfo[(dinfo$sid %in% select_id),]
   }
 
-  all_stats <- process_stats(dinfo, return_data)
   all_epochs <- process_epochs(dinfo, return_data)
 
-  return(list(epochs = all_epochs, aggstats = all_stats))
+  return(all_epochs)
+}
+
+# Loads statistics from original file
+load_stats <- function(select_id = FALSE, return_data = FALSE){
+  # Cave: if files have never been parsed and saved before, this may take some
+  #   minutes depending on the number of select_id s.
+  #
+  # select_id: can be FALSE or subject id, e.g. C1045, or vector of subject ids, e.g. c("C1045", "P1045")
+
+  dinfo <- load_paths(in_dir = "./data/raw")
+
+  if (select_id != FALSE){
+    dinfo <- dinfo[(dinfo$sid %in% select_id),]
+  }
+
+  all_stats <- process_stats(dinfo, return_data)
+
+  return(all_stats)
 }

@@ -38,7 +38,8 @@ bin_series_at_anker <- function(data, target_cols, rel_col, bin_size, save = FAL
   binned_data <- binned_data |>
     dplyr::mutate(
       time = hms::as_hms(.data$date_time),
-      date = lubridate::as_date(.data$date_time)
+      date = lubridate::as_date(.data$date_time),
+      bin_size = bin_size
     )
   return(binned_data)
 }
@@ -94,7 +95,7 @@ bin_series_at_datetime <- function(data, target_cols, minute_interval = 30, save
 
 
 # Helper function to calculate datasets with different bion size at once
-calc_multiple_bins <- function(data, bin_sizes = c(5,10,30,60)){
+calc_multiple_bins <- function(data, rel_col, bin_sizes = c(5,10,30,60)){
   # bin_sized: numeric vector, in minutes
   # return: list of data frames names e.g. data30 for bin_sizes = 30
 
@@ -103,8 +104,8 @@ calc_multiple_bins <- function(data, bin_sizes = c(5,10,30,60)){
     binned_data[[paste0("data", bin)]] <- bin_series_at_anker(
       data,
       target_cols,
-      rel_col = "nrel_date_time",
-      bin_size = 5
+      rel_col = rel_col,
+      bin_size = bin
     ) |>
       dplyr::mutate(sid = data$sid[1], group = data$group[1], id = data$id[1])
   }
