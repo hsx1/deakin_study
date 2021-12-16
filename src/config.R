@@ -8,7 +8,7 @@
 
 # libraries ---------------------------------------------------------------
 
-# TODO install required
+# install required
 all_packages <-
   c("lubridate",
     "ggplot2",
@@ -26,7 +26,8 @@ new_packages <-
 if (length(new_packages)) {
   install.packages(new_packages)
 }
-
+# load packages
+lapply(all_packages, require, character.only = TRUE)
 
 # source ------------------------------------------------------------------
 
