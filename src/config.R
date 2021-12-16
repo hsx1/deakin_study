@@ -20,7 +20,8 @@ all_packages <-
     "stargazer",
     "knitr",
     "kableExtra",
-    "gridExtra")
+    "gridExtra",
+    "stringr")
 new_packages <-
   all_packages[!(all_packages %in% installed.packages()[, "Package"])]
 if (length(new_packages)) {
