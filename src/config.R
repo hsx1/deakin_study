@@ -9,12 +9,23 @@
 # libraries ---------------------------------------------------------------
 
 # TODO install required
-library("lubridate")
-library("ggplot2")
-library("dplyr")
-library("tidyr")
-library("hms")
-library("RColorBrewer")
+all_packages <-
+  c("lubridate",
+    "ggplot2",
+    "dplyr",
+    "tidyr",
+    "hms",
+    "RColorBrewer",
+    "testthat",
+    "stargazer",
+    "knitr",
+    "kableExtra",
+    "gridExtra")
+new_packages <-
+  all_packages[!(all_packages %in% installed.packages()[, "Package"])]
+if (length(new_packages)) {
+  install.packages(new_packages)
+}
 
 
 # source ------------------------------------------------------------------

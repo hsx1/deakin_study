@@ -65,7 +65,8 @@ cprint <- function(txt, colour) {
 
 # percent of zero values
 perc_zero <- function(v){
-  sprintf("%d%%",sum(v == 0)/length(v) * 100)
+  # v: numeric vector
+  sprintf("%.1f%%",sum(v == 0)/length(v) * 100)
 }
 
 
@@ -94,4 +95,8 @@ str_capitalize <- function(s) {
 str_snake2human <- function(s){
   no_snake <- sub("_", " ", s)
   return(str_capitalize(no_snake))
+}
+
+datetime2time <- function(dttm){
+
 }

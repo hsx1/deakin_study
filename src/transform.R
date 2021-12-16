@@ -33,7 +33,7 @@ bin_series_at_anker <- function(data, target_cols, rel_col, bin_size, save = FAL
   # summarize bins -> mean relative time, and mean values
   binned_data <- tmp |>
     dplyr::group_by(.data$bin) |>
-    dplyr::summarize_at(dplyr::all_of(c(rel_col, target_cols)), mean, na.rm=T)
+    dplyr::summarize_at(dplyr::all_of(c("date_time", rel_col, target_cols)), mean, na.rm=T)
 
   binned_data <- binned_data |>
     dplyr::mutate(

@@ -170,6 +170,12 @@ gridExtra::grid.arrange(cp_sleep, pp_sleep, ncol = 2)
 The clients has lower fractions of sleep recording during night time hours and generally less sleep recording than the partner, descriptively confirming sleep disturbance in accordance with the diagnosis.
 With respect, to light exposure and activity levels, the client and their partner may differ slightly, but not enough to establish presence of a difference by visual inspection of the time series.
 
+For better overview, one day is provided as example:
+
+```{r}
+
+```
+
 
 ## Regularity light exposure and activity
 
@@ -341,25 +347,16 @@ for (target_name in names(crossplot_lists[[1]])) {
 }
 ```
 
-# Exploratory analysis on single dyad/ participants
+# Exploratory analysis
 
-## Goal
+## On single dyad
 
-Goal is to analyze the sleep status depending on time, light exposure and partner activity. To aggregate data, variables sleep probability be summarized for interval type = SLEEP periods as single observations.
+A single dyad consisting of one client with chronic insomnia and their partner is used as example for analysis of the sleep status depending on time, light exposure and partner activity. 
 
 ### Possible approaches/ hypotheses
 
-When looking at 30-minute bins, sleep status over time possibly depends on...
-
-- insomnia diagnosis.
-- current light exposure / differential reaction to red light exposure
-- current partner-activity.
-
-### Additional thoughts
-
-- bins are correlated over time
-- sleep status and activity are correlated and have a common cause.
-- each day represents a repeated measurement of sleep 
+When looking at 30-minute bins, sleep status over time most likely depends on diagnosis of insomnia. First, one may suspect that particularly in the insomnia patient, i.e. the client, light of specific wave lengths may enhance the probability of waking up. 
+Second, insomnia patients may easily be woken up be movement by their bed-partners.
 
 
 ```{r include=FALSE}
@@ -378,18 +375,35 @@ dyad <- dplyr::left_join(dyad, reverse_dyad, by = c("group_name", "date_time"))
 # dyad |>
 #   dplyr::filter(.data$time == hms::as_hms("17:24:30")) |>
 #   dplyr::select(group_name, date_time, activity, partner_activity)
-```
 
-```{r AssumptionTests, echo=FALSE}
 # select time where subject of prediction is asleep for the complete bin
+# switch day time and night time for calculation only
+# extract number day from start of the experiment
+# night time is formated as "fraction of day" in daytime
 dyad_sleep <- dyad |>
   dplyr::filter(.data$asleep == 1) |>
-  dplyr::select(dplyr::all_of(c("id", "group", "date_time", "date", "time", "sleep_wake", "activity", "partner_activity", LIGHT_COLS, "asleep")))
+  dplyr::mutate(
+    group = as.factor(.data$group),
+    night_time = as.numeric(hms::as_hms(format((.data$date_time + lubridate::hours(12)), format = "%H:%M:%S"))) / (60*60*24), 
+    day = as.numeric(as.Date(.data$date_time) - min(as.Date(.data$date_time)))
+    ) #|>
+  #dplyr::select(dplyr::all_of(c("id", "group", "date_time", "date", "time", "sleep_wake", "activity", "partner_activity", LIGHT_COLS, "asleep")))
 
+#hms::as_hms(dyad_sleep$time - hms::as_hms("12:00:00"))
+
+```
+
+### Variables
+
+The primary outcome measure, probability of waking up is measured by the fraction of wakefulness during the selected minute span, here 30 minutes. Note, that categorization of sleep status (asleep or awake) is based on temporally consistent activity. Sleep status changes when the participant is at least 10 minutes immobile or mobile, thus sleep status and activity measure are correlated and concurrent, and activity is not considered a meaningful predictor.
+Predictors of interest are measurement of red light, green light, blue light, and white light. Additionally, movement of bed partners can be quantified by partner-activity during sleep periods of the client.
+Distribution of those variables are log-normal and can be transformed to normal distribution. However, there are high rates of missing values in all variables (red light: `r perc_zero(dyad_sleep$red_light)`, green light: `r perc_zero(dyad_sleep$green_light)`, blue light: `r perc_zero(dyad_sleep$blue_light)`, white light: `r perc_zero(dyad_sleep$white_light)`, partner-activity: `r perc_zero(dyad_sleep$partner_activity)`). Therefore, all variables are included in their in their original form.
+
+```{r AssumptionTests, echo=FALSE}
 # partner activity
 dens_act <- ggplot(dyad_sleep, aes(x = partner_activity)) +
   scale_x_continuous(trans = "log10", labels = scales::comma) +
-  geom_density() +
+  geom_density(color=DFLT_COLORS[4]) +
   labs(
     x = "Activity [counts]",
     y = "Density [fraction]"
@@ -446,38 +460,47 @@ dens_color <- ggplot(long_light, aes(x = target_value, color = target_name)) +
 grobs_out <- list(dens_color, dens_white, dens_act)
 ```
 
-```{r, fig.height=4, fig.width=10, warning=FALSE, cache=TRUE}
+```{r, fig.height=4, fig.width=10, warning=FALSE, cache=FALSE}
 gridExtra::grid.arrange(grobs = grobs_out, ncol = 3)
 ```
 
+### Model setup and estimation
 
-```{r eval=FALSE, include=FALSE}
-# linear model
-model <- "sleep_wake ~ time + red_light + green_light + blue_light + partner_activity"
-fit <- lm(model, data = dyad_sleep[dyad_sleep$group == "C",])
-summary(fit)
+In order to quantify difference between client and patient, it's suggested to use one model.
+A model was fitted with data from client and patient entered a grouping vector group, a transformed night time vector, as well as a red, green, blue, and white light values in their original form into the model. An interaction term for the group and any other variable was modeled to capture the differential reaction of client and partner to light and partner activity.
 
+```{r SimpleLinear, echo=FALSE, results='asis'}
+# simple linear model
+model <- "sleep_wake ~ group*(night_time + red_light + green_light + blue_light + partner_activity)"
+fit <- lm(model, data = dyad_sleep)
+#summary(fit)
+stargazer::stargazer(fit, ci=TRUE, ci.level=0.95, single.row = TRUE, type="html")
+```
+
+### Further considerations
+
+However, further aspects that needs to be considered, in confirmatory hypothesis testing, e.g. correlation of subsequent bins, and that each day represents a repeated measurement of the same construct, sleep disturbance.
+One approach to account for the repeated measurement nature is to model data in a hierarchical fashion, e.g. using linear mixed models. Yet, because of the scarcity of above zero values in predictor variables, there are to few observations per day, which precludes to model clustering in days. Accordingly, estimation procedures yield singularity warnings.
+
+
+```{r MixedLinear, eval=FALSE, include=FALSE, results='asis'}
 # mixed linear model
-model <- "sleep_wake ~ time + red_light + green_light + blue_light + partner_activity + (1|day)"
-fit <- lme4::lmer(model, data = dyad_sleep[dyad_sleep$group == "C",])
+mdata_sleep <- dyad_sleep |>
+  dplyr::mutate(
+    #night_time = as.numeric(dyad_sleep$night_time)/(60*60*24),
+    sleep_wake = scale(sleep_wake),
+    partner_activity = scale(.data$partner_activity),
+    red_light = scale(.data$red_light),
+    blue_light = scale(.data$blue_light),
+    green_light = scale(.data$green_light),
+    white_light = scale(.data$white_light)
+    )
+# simple example model
+model <- "sleep_wake ~ group*partner_activity + (1 |day)"
+fit <- afex::mixed(model, data = mdata_sleep, method="PB")
 summary(fit)
 ```
 
-
-# Exploratory analysis on complete dataset
-
-## Considerations
-
-### Clustering of the data
-
-- observations are clustered within participants
-- participants are clustered within dyads
-- participants are clustered within clinical status (client vs. partner)
-
-- assuming no autocorrelation component across within-participant observations, i.e.
-one sleep periods is assumed not to influence following period
-
-# To Do
-
-- [ ] do not compute separately for client and partner
-- [ ] fix y axes
+Future analyses may incorporate the complete dataset in their analysis. During model setup, one should consider clustering of the data on different levels: observations are clustered within participants, and participants are clustered in dyads with their respective partners and within diagnosis group (client or partner).
+Using the full data set, the influence of light exposure and activity of the individual during wake hours on sleep periods and sleep disturbance could be investigated by using the aggregated data on actie and sleep periods provided by the summaries in the raw dataset.
+For the analysis, simplifying assumptions could be made, such as that sleep periods do not influence each other.

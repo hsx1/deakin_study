@@ -1,10 +1,5 @@
 # UNIT TESTS
 
-library("testthat")
-
-# source everything
-source("./src/utils.R")
-
 # TODO test loader and parser
 
 # test single file equals downloaded file
@@ -69,7 +64,7 @@ compare_files_email_vs_download <- function(){
 test_periods_of_target <- function(){
   start_time <- as.POSIXct("2013-06-17 14:20:00 UTC")
   steps <- 4
-  end_time <- start + as.difftime(steps, units = "mins")
+  end_time <- start_time + as.difftime(steps, units = "mins")
   data <- data.frame(
     line = 1:5,
     date_time = seq(start_time, end_time, by = "mins"),
@@ -78,7 +73,7 @@ test_periods_of_target <- function(){
     dplyr::mutate(
       invalid = is.na(.data$value)
     )
-  count_na_blocks <- nrow(periods_of_target(data, target = "invalid"))
+  count_na_blocks <- periods_of_target(data, target = "invalid") |> nrow()
   testthat::expect_equal(count_na_blocks, 1)
 
   data <- data.frame(
@@ -123,9 +118,8 @@ test_bin_series_at_datetime <- function(){
   testthat::expect_equal(nrow(new_data), 2)
 
   new_data <- bin_series_at_datetime(data, target_cols = c("small_value", "value"), minute_interval = 3)
-  testthat::expect_equal(ncol(new_data), 3)
+  testthat::expect_equal(ncol(new_data), 5)
 }
-
 
 # bin_series_at_anker()
 test_bin_series_at_anker <- function(){
@@ -138,14 +132,13 @@ test_bin_series_at_anker <- function(){
     small_value = rnorm(steps),
     value = round(rnorm(steps)*10),
     date_time = seq(start_time, end_time, by = "mins")
-    ) #|>
-    #dplyr::filter(!(.data$line %in% filter_out))
+    )
 
   anker_time <- data$date_time[steps/2]
   # numeric relative datetime in minutes
   data$nrel_tmin <- as.numeric(data$date_time - anker_time) / 60
-  new_data <- bin_series_at_anker(data, target_cols = "value", rel_col = "nrel_tmin", bin_size = steps/4)
-  testthat::expect_equal(new_data$bin[2], 0)
+  new_data <- bin_series_at_anker(data, target_cols = "value", rel_col = "nrel_tmin", bin_size = 3)
+  testthat::expect_equal(new_data$bin[2], (0+3-1)/2)
 }
 
 # plot_activity()
@@ -154,6 +147,7 @@ test_plot_activity <- function(){
   steps <- 1000
   end_time <- start_time + as.difftime(steps-1, units = "mins")
   data <- data.frame(
+    group = rep("C", steps),
     line = 1:steps,
     small_value = rnorm(steps),
     value = round(rnorm(steps)*10),
@@ -166,14 +160,20 @@ test_plot_activity <- function(){
   new_data <- bin_series_at_anker(data, target_cols = "value", rel_col = "nrel_tmin", bin_size = steps/4)
 
   # plot works for original time series
-  plot_on_original <- plot_activity(data)
-  testthat::expect_true(plot_on_original)
+  plot_on_original <- plot_activity(data, save_plot = FALSE)
+  testthat::expect_true("ggplot" %in% class(plot_on_original))
 
   # plot works for binned time series
-  plot_on_binned <- plot_activity(new_data)
-  testthat::expect_true(plot_on_binned)
+  plot_on_binned <- plot_activity(new_data, save_plot = FALSE)
+  testthat::expect_true("ggplot" %in% class(plot_on_binned))
 
 }
 
 
-cprint("All tests passed.", col = "g")
+test_main <- function(){
+  compare_files_email_vs_download()
+  test_periods_of_target()
+  test_bin_series_at_datetime()
+  test_plot_activity()
+  cprint("All tests passed.", col = "g")
+}
