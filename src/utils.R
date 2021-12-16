@@ -63,6 +63,11 @@ cprint <- function(txt, colour) {
   }
 }
 
+# percent of zero values
+perc_zero <- function(v){
+  sprintf("%d%%",sum(v == 0)/length(v) * 100)
+}
+
 
 # formatting --------------------------------------------------------------
 
@@ -84,7 +89,6 @@ str_capitalize <- function(s) {
   rest <- substring(s, 2)
   return(paste0(first, rest))
 }
-
 
 # Remove snake case and capitalize
 str_snake2human <- function(s){

@@ -15,7 +15,7 @@ save_plot <- FALSE
 
 # Inspection of single dataset
 
-```{r include=FALSE}
+```{r include=FALSE, cache=TRUE}
 cdata <- load_data(select_id = "C1045", return_data = TRUE)
 cstats <- load_stats(select_id = "C1045", return_data = TRUE)
 
@@ -72,7 +72,11 @@ binned_cdata <- cdata |>
     asleep = as.numeric(.data$interval_status == "REST-S"),
     nrel_date_time = (as.numeric(.data$date_time - anker) / 60)
   ) |>
-  calc_multiple_bins(rel_col = "nrel_date_time", bin_sizes = c(5, 10, 20, 30, 60)) |>
+  calc_multiple_bins(
+    target_cols = c(TARGET_COLS, "asleep"),
+    rel_col = "nrel_date_time",
+    bin_sizes = c(5, 10, 20, 30, 60)
+  ) |>
   dplyr::bind_rows()
 
 merged_binned_cdata <- dplyr::bind_rows(binned_cdata) |>
@@ -106,7 +110,7 @@ p_all_bins <- ggplot(data = merged_binned_cdata, aes(x = .data$time, color = as.
 ```
 
 
-```{r PlotBinComparison, echo=FALSE, out.width="100%", fig.cap="Figure 1. White light exposure, log scaled.", fig.height=3, fig.width=12, warning=FALSE}
+```{r PlotBinComparison, echo=FALSE, out.width="100%", fig.cap="Figure 1. White light exposure, log scaled.", fig.height=3, fig.width=12, warning=FALSE, cache=TRUE}
 p_all_bins
 ```
 Visual inspection of the time course of white light exposure with different time bins suggests that bin of 20 and even more 30 minutes may capture relevant variation best while smoothing over noisy variation. Smaller bins (e.g. 5 or 10 minutes) heavily depend on occasional extreme values, while larger bins (e.g. 60 minutes) flatten regional changes that may still be of interest. Thus, further analysis is based on 30-minute bins.
@@ -124,12 +128,16 @@ binned_pdata <- pdata |>
     asleep = as.numeric(.data$interval_status == "REST-S"),
     nrel_date_time = (as.numeric(.data$date_time - anker) / 60)
   ) |>
-  calc_multiple_bins(rel_col = "nrel_date_time", bin_sizes = bin_size) |>
+  calc_multiple_bins(
+    target_cols = c(TARGET_COLS, "asleep"),
+    rel_col = "nrel_date_time",
+    bin_sizes = bin_size
+  ) |>
   dplyr::bind_rows()
 pdata30 <- binned_pdata[binned_pdata$bin_size == bin_size, ]
 ```
 
-```{r PlotTimeSeries, include=FALSE}
+```{r PlotTimeSeries, include=FALSE, cache=TRUE}
 # compute plots for time series
 cp_color <- plot_colorlight(cdata30, title = "Light exposure of client\n  in 30-minute bins", log = TRUE, save_plot = save_plot)
 cp_white <- plot_whitelight(cdata30, title = "White light exposure of client\n  in 30-minute bins", save_plot = save_plot)
@@ -142,19 +150,19 @@ pp_activity <- plot_activity(pdata30, title = "Activity of partner in 30-minute 
 pp_sleep <- plot_sleep(pdata30, title = "% Sleep recording of partner\n  in 30-minute bins", save_plot = save_plot)
 ```
 
-```{r WeekdayColor, echo=FALSE, fig.cap="Figure 2", fig.height=10, fig.width=12, warning=FALSE, out.width="100%"}
+```{r WeekdayColor, echo=FALSE, fig.cap="Figure 2", fig.height=10, fig.width=12, warning=FALSE, out.width="100%", cache=TRUE}
 gridExtra::grid.arrange(cp_color, pp_color, ncol = 2)
 ```
 
-```{r WeekdayWhite, echo=FALSE, fig.cap="Figure 3", fig.height=10, fig.width=12, warning=FALSE, out.width="100%"}
+```{r WeekdayWhite, echo=FALSE, fig.cap="Figure 3", fig.height=10, fig.width=12, warning=FALSE, out.width="100%", cache=TRUE}
 gridExtra::grid.arrange(cp_white, pp_white, ncol = 2)
 ```
 
-```{r WeekdayActitity, echo=FALSE, fig.cap="Figure 4", fig.height=10, fig.width=12, warning=FALSE, out.width="100%"}
+```{r WeekdayActitity, echo=FALSE, fig.cap="Figure 4", fig.height=10, fig.width=12, warning=FALSE, out.width="100%", cache=TRUE}
 gridExtra::grid.arrange(cp_activity, pp_activity, ncol = 2)
 ```
 
-```{r WeekdaySleep, echo=FALSE, fig.cap="Figure 5", fig.height=10, fig.width=12, warning=FALSE, out.width="100%"}
+```{r WeekdaySleep, echo=FALSE, fig.cap="Figure 5", fig.height=10, fig.width=12, warning=FALSE, out.width="100%", cache=TRUE}
 gridExtra::grid.arrange(cp_sleep, pp_sleep, ncol = 2)
 ```
 
@@ -171,6 +179,9 @@ Regularity of light exposure and activity across the time of data collection be 
 ```{r include=FALSE, fig.cap="Figure"}
 dyad <- list(client = cdata30, partner = pdata30)
 
+```
+
+```{r}
 # plots
 autoplot_lists <- lapply(names(dyad), \(data_name){
   # autocorrelation and partial autocorrelation for client
@@ -213,7 +224,7 @@ autoplot_lists <- lapply(names(dyad), \(data_name){
 names(autoplot_lists) <- names(dyad)
 ```
 
-```{r echo=FALSE, fig.width=13, fig.height=3, warning=FALSE}
+```{r echo=FALSE, fig.width=13, fig.height=3, warning=FALSE, cache=TRUE}
 # re-organize plots from list
 for (target in names(autoplot_lists[[1]][[1]])) {
   out_grobs <- list()
@@ -310,7 +321,7 @@ crossplot_lists <- lapply(names(dyad), \(data_name){
 names(crossplot_lists) <- names(dyad)
 ```
 
-```{r echo=FALSE, warning=FALSE, fig.width=15, fig.height=3}
+```{r echo=FALSE, warning=FALSE, fig.width=15, fig.height=3, cache=TRUE}
 # re-orgnize and display plots
 # iterate over targets
 for (target_name in names(crossplot_lists[[1]])) {
@@ -334,30 +345,26 @@ for (target_name in names(crossplot_lists[[1]])) {
 
 ## Goal
 
-Goal is to analyze the sleep status depending on light exposure, activity 
-(and partner activity?). To aggregate data, variables sleep probability be 
-summarized for interval type = SLEEP periods as single observations.
+Goal is to analyze the sleep status depending on time, light exposure and partner activity. To aggregate data, variables sleep probability be summarized for interval type = SLEEP periods as single observations.
 
 ### Possible approaches/ hypotheses
 
-Sleep status over time depends on...
+When looking at 30-minute bins, sleep status over time possibly depends on...
 
 - insomnia diagnosis.
-- current red light exposure / differential reaction to red light exposure
+- current light exposure / differential reaction to red light exposure
 - current partner-activity.
-- lagged partner-activity.
 
 ### Additional thoughts
 
-- Sleep status and activity are correlated and have a common cause.
-- Each day represents a repeated measurement of sleep 
+- bins are correlated over time
+- sleep status and activity are correlated and have a common cause.
+- each day represents a repeated measurement of sleep 
 
 
-```{r eval=FALSE, include=FALSE}
+```{r include=FALSE}
 # client and partner data in long format
 # create column with partner activity
-
-
 dyad <- dplyr::bind_rows(list(client = cdata30, partner = pdata30), .id = "group_name")
 reverse_dyad <- dyad |>
   dplyr::mutate(
@@ -369,50 +376,91 @@ dyad <- dplyr::left_join(dyad, reverse_dyad, by = c("group_name", "date_time"))
 
 # test
 # dyad |>
-#   dplyr::filter(.data$time == hms::as_hms("17:05:00")) |>
+#   dplyr::filter(.data$time == hms::as_hms("17:24:30")) |>
 #   dplyr::select(group_name, date_time, activity, partner_activity)
+```
 
-# select sleep time
+```{r AssumptionTests, echo=FALSE}
+# select time where subject of prediction is asleep for the complete bin
 dyad_sleep <- dyad |>
-  dplyr::filter(.data$interval_status == "REST-S") |>
-  dplyr::select(dplyr::all_of(c("id", "group", "date_time", "date", "time", "interval_status", "sleep_wake", "activity", LIGHT_COLS)))
+  dplyr::filter(.data$asleep == 1) |>
+  dplyr::select(dplyr::all_of(c("id", "group", "date_time", "date", "time", "sleep_wake", "activity", "partner_activity", LIGHT_COLS, "asleep")))
 
-# TODO density plots
-# assumption tests
-
-# create 30-minute bins
-sleep10 <- sleep |>
-  dplyr::mutate(nrel_date_time = (as.numeric(.data$date_time - .data$date_time[1]) / 60)) |>
-  bin_series_at_anker(
-    target_cols = TARGET_COLS,
-    rel_col = "nrel_date_time",
-    bin_size = 10
-  ) |>
-  dplyr::mutate(
-    group = sleep$id[1],
-    group = sleep$group[1],
-    sub_id = sleep$sub_id[1]
+# partner activity
+dens_act <- ggplot(dyad_sleep, aes(x = partner_activity)) +
+  scale_x_continuous(trans = "log10", labels = scales::comma) +
+  geom_density() +
+  labs(
+    x = "Activity [counts]",
+    y = "Density [fraction]"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(
+      angle = 45, vjust = 0.5, hjust = 1,
+      margin = margin(t = -8, r = 0, b = 15, l = 0)
+    )
   )
+
+# white light
+dens_white <- ggplot(dyad_sleep, aes(x = white_light)) +
+  scale_x_continuous(trans = "log10", labels = scales::comma) +
+  geom_density() +
+  labs(
+    x = "White Light [lux]",
+    y = "Density [fraction]"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(
+      angle = 45, vjust = 0.5, hjust = 1,
+      margin = margin(t = -8, r = 0, b = 15, l = 0)
+    )
+  )
+
+# color light
+long_light <- dyad_sleep |>
+  tidyr::pivot_longer(cols = c("red_light", "green_light", "blue_light"), values_to = "target_value", names_to = "target_name")
+dens_color <- ggplot(long_light, aes(x = target_value, color = target_name)) +
+  geom_density() +
+  scale_color_manual(
+    limits = c("red_light", "green_light", "blue_light"),
+    values = c("#CC0000", "#009900", "#0066CC"),
+    labels = c("red", "green", "blue")
+  ) +
+  scale_x_continuous(trans = "log10", labels = scales::comma) +
+  labs(
+    color = "Color",
+    x = "Light [\u00B5W / m\u00B2]",
+    y = "Density [fraction]"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = c(0.8, 0.8),
+    axis.text.x = element_text(
+      angle = 45, vjust = 0.5, hjust = 1,
+      margin = margin(t = -8, r = 0, b = 15, l = 0)
+    )
+  )
+
+grobs_out <- list(dens_color, dens_white, dens_act)
+```
+
+```{r, fig.height=4, fig.width=10, warning=FALSE, cache=TRUE}
+gridExtra::grid.arrange(grobs = grobs_out, ncol = 3)
 ```
 
 
 ```{r eval=FALSE, include=FALSE}
-model <- "sleep_wake ~ time + partner_activity + red_light"
-fit <- lm(model, data = sleep10)
+# linear model
+model <- "sleep_wake ~ time + red_light + green_light + blue_light + partner_activity"
+fit <- lm(model, data = dyad_sleep[dyad_sleep$group == "C",])
 summary(fit)
 
-# lagged regression?
-# GLM? Smoothing?
-
-# Analysis ----------------------------------------------------------------
-
-# https://online.stat.psu.edu/stat510/lesson/8/8.2
-# detrending necessary? low-pass filter?
-# logistic regression of current light and different lags
-# compare odds ratio(?) between C and P
-
-model <- "sleep_wake ~ 1"
-res <- glm(model, data = data30, family = binomial)
+# mixed linear model
+model <- "sleep_wake ~ time + red_light + green_light + blue_light + partner_activity + (1|day)"
+fit <- lme4::lmer(model, data = dyad_sleep[dyad_sleep$group == "C",])
+summary(fit)
 ```
 
 

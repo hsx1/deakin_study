@@ -7,3 +7,5 @@
 /notebook
 
 *.html
+/analysis_cache
+/analysis_files

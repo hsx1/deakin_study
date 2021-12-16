@@ -19,16 +19,16 @@ bin_series_at_anker <- function(data, target_cols, rel_col, bin_size, save = FAL
     dplyr::filter(.data$n < bin_size)
   invalid_bins <- intersect(data$bin, invalid$bin) # maximum 2 if not aligned
 
-  # add average bin time
-  offset <- (bin_size - 1)/2
-  data$bin <- data$bin + offset
-
   # filter bins that are too small
   if(length(invalid_bins) > 0){
     tmp <- data[!(data$bin %in% invalid_bins),]
   }else{
     tmp <- data
   }
+
+  # add average bin time
+  offset <- (bin_size - 1)/2
+  tmp$bin <- tmp$bin + offset
 
   # summarize bins -> mean relative time, and mean values
   binned_data <- tmp |>
