@@ -1,20 +1,42 @@
-# Basic stats and analysis on of the Deakin Study
+# Basic stats and exploratory analysis on of the Deakin Study
 
 ## Description
 
-
+This repository contains all script and a RMarkdown notebook to run some basic descriptive and exploratory analysis on one example dataset of the Deakin Study on chronic insomnia with clients and their bed partners.
 
 ## Usage
 
-Only tested under R = 4.1.1.
+You can either view the results or compute them yourself.
+
+### View Results
+
+Open [index.html](https://hsx1.github.io/deakin_study/analysis.html).
+
+### Compute
+
+Step 1: Download the original dataset [here](https://datadryad.org/stash/dataset/doi:10.5061%2Fdryad.b8gtht7bh)
+
+Step 2: Unzip the downloaded dataset move the folders `CLIENT` and `PARTNER` to folder `data`/`raw`
+
+Step 3: Open `analysis.Rmd` and press "Knit to HTML"
 
 ## Dependencies
 
-Only tested on `R` version 4.1.1 on windows.
+Only tested on `R` version 4.1.1 on windows. 
 
-## Example
+Scripts depend on the following packages:
 
-
+- lubridate
+- ggplot2
+- dplyr
+- tidyr
+- hms
+- RColorBrewer
+- testthat
+- stargazer
+- knitr
+- kableExtra
+- gridExtra
 
 ## Reference & License
 
