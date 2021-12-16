@@ -85,6 +85,7 @@ str_capitalize <- function(s) {
   return(paste0(first, rest))
 }
 
+
 # Remove snake case and capitalize
 str_snake2human <- function(s){
   no_snake <- sub("_", " ", s)

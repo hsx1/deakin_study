@@ -95,7 +95,7 @@ bin_series_at_datetime <- function(data, target_cols, minute_interval = 30, save
 
 
 # Helper function to calculate datasets with different bion size at once
-calc_multiple_bins <- function(data, rel_col, bin_sizes = c(5,10,30,60)){
+calc_multiple_bins <- function(data, rel_col, target_cols = TARGET_COLS, bin_sizes = c(5,10,30,60)){
   # bin_sized: numeric vector, in minutes
   # return: list of data frames names e.g. data30 for bin_sizes = 30
 
@@ -116,7 +116,7 @@ calc_multiple_bins <- function(data, rel_col, bin_sizes = c(5,10,30,60)){
 # autocorrelations and cross-correlations ---------------------------------
 
 # Get autocorrelations of light and activity
-get_autocor <- function(data, target_cols = c("activity", light_cols), max_lag = Inf){
+get_autocor <- function(data, target_cols = c("activity", LIGHT_COLS), max_lag = Inf){
   # data: dataset
   # max_lag: maximum lag in correlation
   # bin_size = (data$date_time[2] - data$date_time[1]); day_span = 2
@@ -159,7 +159,7 @@ get_autocor <- function(data, target_cols = c("activity", light_cols), max_lag =
 }
 
 # Get cross correlation of activity with light
-get_crosscor <- function(data, activity_col = "activity", light_cols = light_cols, max_lag = Inf){
+get_crosscor <- function(data, activity_col = "activity", light_cols = LIGHT_COLS, max_lag = Inf){
   # data: dataset
   # max_lag: maximum lag in correlation
   #   bin_size = (data$date_time[2] - data$date_time[1]); day_span = 2

@@ -3,20 +3,20 @@
 # functions ---------------------------------------------------------------
 
 # loads paths of all files in folders structured as original
-load_paths <- function(in_dir = "./data/raw", groups = c("CLIENT", "PARTNER"), sid_regex = "(C|P)\\d{4}", complete = FALSE) {
+load_paths <- function(in_dir = "./data/raw", groups = c("CLIENT", "PARTNER"), complete = FALSE) {
   # in_dir: directory with raw data
   # groups: names of groups
   # re: regular expressions for ids of groups
 
-  client_files <- list.files(path = file.path(in_dir, groups[1]), pattern = sid_regex, full.names = TRUE)
-  partner_files <- list.files(path = file.path(in_dir, groups[2]), pattern = sid_regex, full.names = TRUE)
+  client_files <- list.files(path = file.path(in_dir, groups[1]), pattern = SID_REGEX, full.names = TRUE)
+  partner_files <- list.files(path = file.path(in_dir, groups[2]), pattern = SID_REGEX, full.names = TRUE)
 
   cid_list <- data.frame(
-    id = as.numeric(substring(stringr::str_extract(client_files, sid_regex), 2)),
+    id = as.numeric(substring(stringr::str_extract(client_files, SID_REGEX), 2)),
     CLIENT = client_files
   )
   pid_list <- data.frame(
-    id = as.numeric(substring(stringr::str_extract(partner_files, sid_regex), 2)),
+    id = as.numeric(substring(stringr::str_extract(partner_files, SID_REGEX), 2)),
     PARTNER = partner_files
   )
 
@@ -39,7 +39,7 @@ load_paths <- function(in_dir = "./data/raw", groups = c("CLIENT", "PARTNER"), s
 # parses file to extract statistics
 parse_statistics <- function(f) {
   # read group and id
-  sid <- stringr::str_extract(f, sid_regex)
+  sid <- stringr::str_extract(f, SID_REGEX)
   group <- substring(sid, first = 1, last = 1)
   id <- as.numeric(substring(sid, first = 2))
 
@@ -101,7 +101,7 @@ parse_statistics <- function(f) {
 # parses file to extract epochs
 parse_epochs <- function(f) {
   # read group and id
-  sid <- stringr::str_extract(f, sid_regex)
+  sid <- stringr::str_extract(f, SID_REGEX)
   group <- substring(sid, first = 1, last = 1)
   id <- as.numeric(substring(sid, first = 2))
 

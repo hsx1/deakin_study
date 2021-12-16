@@ -114,7 +114,7 @@ plot_correlogram <- function(cordata, data, kind = "auto",
   # file_spec: file specification for saving the plot
 
   x <- "lag"
-  if (is.null(plot_ylim)) {
+  if (is.null(plot_ylim) & kind != "cross") {
     plot_ylim <- c(min(cordata$acf, cordata$pacf, na.rm = T), 1)
   }
 
@@ -124,7 +124,7 @@ plot_correlogram <- function(cordata, data, kind = "auto",
       cordata,
       aes(x = .data[["lag"]], y = .data[["acf"]])
     ) +
-      geom_col(fill = "#4373B6", width = 0.7) +
+      geom_col(fill = "#4373B6", width = 1) +
       scale_y_continuous(
         limits = plot_ylim
       )
@@ -135,18 +135,19 @@ plot_correlogram <- function(cordata, data, kind = "auto",
       cordata,
       aes(x = .data[["lag"]], y = .data[["pacf"]])
     ) +
-      geom_col(fill = "#4373B6", width = 0.7) +
+      geom_col(fill = "#4373B6", width = 1) +
       scale_y_continuous(
         limits = plot_ylim
       )
 
   } else if (kind == "cross") {
-    title <- ifelse(missing(title), "Cross Correlation", title)
+    title <- ifelse(missing(title), "Cross-correlation", title)
+
     raw_p <- ggplot(
       cordata,
       aes(x = .data[["lag"]], y = .data[["ccf"]])
     ) +
-      geom_col(fill = "#4373B6", width = 0.7)
+      geom_col(fill = "#4373B6", width = 1)
 
   } else {
     warning("No valid specification.")
@@ -280,8 +281,8 @@ plot_whitelight <- function(data, title = "While light exposure by day", save_pl
 # Plot activity by day
 plot_activity <- function(data, title = "Activity by day", save_plot = TRUE) {
   p <- ggplot(data = data, aes(x = .data$time)) +
-    # geom_col(aes(y = 1 - .data$activity), color = my_colors[4]) +
-    geom_line(aes(y = .data$activity), color = my_colors[4]) +
+    # geom_col(aes(y = 1 - .data$activity), color = DFLT_COLORS[4]) +
+    geom_line(aes(y = .data$activity), color = DFLT_COLORS[4]) +
     facet_grid(facets = .data$date ~ .) +
     scale_x_time(
       breaks = seq(0, 24, 2) * 60 * 60,

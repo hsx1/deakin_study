@@ -28,9 +28,9 @@ source("./src/utils.R")
 
 # constants ---------------------------------------------------------------
 
-my_colors <- RColorBrewer::brewer.pal(n=9,"Set1")
-data_dir <- "./data"
-raw_dir <- file.path(data_dir, "raw")
-sid_regex <- "(C|P)\\d{4}"
-light_cols <- c("white_light", "red_light", "blue_light", "green_light")
-target_cols <- c("date_time", "sleep_wake", "activity", light_cols)
+DFLT_COLORS <- RColorBrewer::brewer.pal(n=9,"Set1")
+DATA_DIR <- "./data"
+RAW_DIR <- file.path(DATA_DIR, "raw")
+SID_REGEX <- "(C|P)\\d{4}"
+LIGHT_COLS <- c("white_light", "red_light", "blue_light", "green_light")
+TARGET_COLS <- c("date_time", "sleep_wake", "activity", LIGHT_COLS)
